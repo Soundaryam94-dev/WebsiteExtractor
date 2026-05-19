@@ -84,10 +84,14 @@ export default function ProcessingClient() {
         const href = URL.createObjectURL(blob);
         blobUrlRef.current = href;
 
-        // Auto-download
+        // Auto-download with domain-based filename
+        const zipName = (() => {
+          try { return new URL(url).hostname.replace(/^www\./, "").replace(/\.[^.]+$/, "") + ".zip"; }
+          catch { return "website.zip"; }
+        })();
         const a = document.createElement("a");
         a.href = href;
-        a.download = "website-assets.zip";
+        a.download = zipName;
         a.click();
 
         setPageStatus("success");
@@ -140,7 +144,7 @@ export default function ProcessingClient() {
             {blobUrlRef.current && (
               <a
                 href={blobUrlRef.current}
-                download="website-assets.zip"
+                download={(() => { try { return new URL(url).hostname.replace(/^www\./, "").replace(/\.[^.]+$/, "") + ".zip"; } catch { return "website.zip"; } })()}
                 className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-400 to-purple-500 text-white font-semibold text-sm shadow-[0_4px_20px_rgba(192,132,252,0.3)] hover:shadow-[0_4px_30px_rgba(192,132,252,0.5)] transition-all"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
