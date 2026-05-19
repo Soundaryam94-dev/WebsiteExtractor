@@ -50,6 +50,7 @@ export async function scrape(url: string): Promise<ScrapeResult> {
       "--disable-setuid-sandbox",
       "--disable-blink-features=AutomationControlled",
       "--disable-web-security",
+      "--disable-http2",
     ],
   });
 
@@ -100,7 +101,16 @@ export async function scrape(url: string): Promise<ScrapeResult> {
 
     // Try domcontentloaded first; fall back to "commit" (first byte) for slow sites
     const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 })
-      .catch(() => page.goto(url, { waitUntil: "commit", timeout: 60_000 }));
+      .catch(() => page.goto(url, { waitUntil: "commit", timeout: 60_000 }))
+      .catch((err: Error) => {
+        if (err.message.includes("ERR_HTTP2_PROTOCOL_ERROR")) {
+          throw new Error("This site has an HTTP/2 compatibility issue and cannot be accessed.");
+        }
+        if (err.message.includes("ERR_NAME_NOT_RESOLVED") || err.message.includes("ERR_CONNECTION_REFUSED")) {
+          throw new Error("Could not reach the site. Please check the URL and try again.");
+        }
+        throw err;
+      });
 
     // Hard block on 403/401/503
     const status = response?.status() ?? 200;
