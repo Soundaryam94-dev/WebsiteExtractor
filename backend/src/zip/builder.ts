@@ -504,6 +504,8 @@ ${sizes}
 // Images/
 // ─────────────────────────────────────────────
 async function downloadImages(urls: string[], archive: archiver.Archiver): Promise<void> {
+  let downloaded = 0;
+
   await Promise.allSettled(
     urls.map(async (url) => {
       try {
@@ -511,15 +513,29 @@ async function downloadImages(urls: string[], archive: archiver.Archiver): Promi
           responseType: "arraybuffer",
           timeout: 8_000,
           maxContentLength: 5 * 1024 * 1024,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+            "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+            "Referer": new URL(url).origin,
+          },
         });
         const ext = path.extname(new URL(url).pathname).split("?")[0] || ".png";
         const slug = Math.random().toString(36).slice(2, 8);
         archive.append(Buffer.from(res.data), { name: `Images/${slug}${ext}` });
+        downloaded++;
       } catch {
         // skip unreachable images
       }
     })
   );
+
+  // Always ensure Images/ folder exists in the ZIP
+  if (downloaded === 0) {
+    const lines = urls.length > 0
+      ? `Images could not be downloaded (CDN may require authentication or block bots).\n\nDetected image URLs (${urls.length}):\n${urls.slice(0, 20).join("\n")}`
+      : "No images were found on this page.";
+    archive.append(lines, { name: "Images/image-urls.txt" });
+  }
 }
 
 // ─────────────────────────────────────────────
