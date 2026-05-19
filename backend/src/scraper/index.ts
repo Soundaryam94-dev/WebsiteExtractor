@@ -48,28 +48,58 @@ export async function scrape(url: string): Promise<ScrapeResult> {
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",       // critical on Render/Linux — /dev/shm is only 64MB
       "--disable-blink-features=AutomationControlled",
       "--disable-web-security",
       "--disable-http2",
+      "--no-first-run",
+      "--no-zygote",
+      "--disable-gpu",
     ],
   });
 
   try {
     const context = await browser.newContext({
       userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       viewport: { width: 1440, height: 900 },
       extraHTTPHeaders: {
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
       },
     });
 
-    // Bypass bot detection
+    // Stronger anti-bot fingerprint spoofing
     await context.addInitScript(() => {
       Object.defineProperty(navigator, "webdriver", { get: () => undefined });
-      (window as any).chrome = { runtime: {} };
-      Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3] });
+      Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 8 });
+      Object.defineProperty(navigator, "deviceMemory", { get: () => 8 });
+      Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
+      Object.defineProperty(navigator, "platform", { get: () => "Win32" });
+      Object.defineProperty(navigator, "plugins", {
+        get: () => [
+          { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer" },
+          { name: "Chrome PDF Viewer", filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai" },
+          { name: "Native Client", filename: "internal-nacl-plugin" },
+        ],
+      });
+      (window as any).chrome = {
+        runtime: {},
+        loadTimes: () => ({}),
+        csi: () => ({}),
+        app: {},
+      };
+      // Mask Permissions API
+      const origQuery = window.navigator.permissions?.query?.bind(window.navigator.permissions);
+      if (origQuery) {
+        (window.navigator.permissions as any).query = (params: PermissionDescriptor) =>
+          params.name === "notifications"
+            ? Promise.resolve({ state: "denied" } as PermissionStatus)
+            : origQuery(params);
+      }
     });
 
     const page = await context.newPage();
@@ -99,9 +129,9 @@ export async function scrape(url: string): Promise<ScrapeResult> {
       }
     });
 
-    // Try domcontentloaded first; fall back to "commit" (first byte) for slow sites
-    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 })
-      .catch(() => page.goto(url, { waitUntil: "commit", timeout: 60_000 }))
+    // Use "commit" (first-byte) as primary — resolves immediately on bot-protected sites
+    // that stall on domcontentloaded. Then let load states settle in the background.
+    const response = await page.goto(url, { waitUntil: "commit", timeout: 30_000 })
       .catch((err: Error) => {
         const msg = err.message;
         if (msg.includes("ERR_HTTP2_PROTOCOL_ERROR"))
@@ -120,20 +150,21 @@ export async function scrape(url: string): Promise<ScrapeResult> {
     if (status === 401 || status === 403) {
       throw new Error(`Access denied (HTTP ${status}). This site blocks automated access.`);
     }
-    await page.waitForLoadState("load", { timeout: 20_000 }).catch(() => {});
+
+    // Wait for HTML + JS to settle (short caps — never block longer than needed)
+    await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
+    await page.waitForLoadState("load", { timeout: 10_000 }).catch(() => {});
 
     // Give React/Vue/Angular time to hydrate
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(1500);
 
     // Scroll to trigger lazy-loaded images
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2));
-    await page.waitForTimeout(1200);
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(1000);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(500);
-
-    await page.waitForLoadState("domcontentloaded", { timeout: 5_000 }).catch(() => {});
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2)).catch(() => {});
+    await page.waitForTimeout(700);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
+    await page.waitForTimeout(600);
+    await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
+    await page.waitForTimeout(300);
 
     const title = await page.title().catch(() => new URL(url).hostname);
 

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 interface Extraction {
   id: string;
@@ -57,20 +58,18 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    supabase
-      .from("extractions")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .then(({ data: rows }) => {
-        setExtractions((rows as Extraction[]) ?? []);
+    fetch(`${API_URL}/api/extractions`)
+      .then((r) => r.json())
+      .then(({ data }) => {
+        setExtractions((data as Extraction[]) ?? []);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
-    await supabase.from("extractions").delete().eq("id", id);
+    await fetch(`${API_URL}/api/extractions/${id}`, { method: "DELETE" });
     setExtractions((prev) => prev.filter((e) => e.id !== id));
     setDeletingId(null);
   };
