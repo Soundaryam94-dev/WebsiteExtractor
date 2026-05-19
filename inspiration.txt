@@ -1,0 +1,36 @@
+Inspiration
+
+Modern futuristic SaaS landing page inspired by:
+
+- AI automation tools
+- glassmorphism UI
+- dark premium interfaces
+- productivity dashboards
+
+Style:
+
+- Minimal
+- Clean
+- Neon glow
+- Developer-focused
+
+Fonts:
+
+- Inter
+- Poppins
+
+Color Theme:
+
+- Purple gradient
+- Dark navy background
+- Soft glow effects
+
+UI Inspiration:
+
+- Rounded CTA buttons
+- Glass input fields
+- Large hero typography
+- Smooth animations
+
+Overall Feel:
+Premium AI-powered extraction platform

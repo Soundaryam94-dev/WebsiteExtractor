@@ -1,0 +1,658 @@
+Website URL to Single Page Application ZIP Generator
+
+Complete Requirements Document
+
+---
+
+1. Project Overview
+
+Project Name
+
+Website Extractor(Single Page Aplication)
+
+Goal
+
+The User pastes a website URL.
+
+System automatically:
+
+The Website gets analyzed.
+
+The Content gets extracted.
+
+The Images gets downloaded.
+
+The Color palette gets detected.
+
+The Typography gets detected.
+
+The Single Page Application gets generated.
+
+The ZIP file gets created
+
+Final:
+
+website-assets.zip
+
+It should be downloaded by user.
+
+---
+
+1. Main Workflow
+
+User Input URL
+↓
+Frontend API Request
+↓
+Backend Receives URL
+↓
+Playwright Opens Website
+↓
+Website Fully Render
+↓
+Extract:
+
+- Images
+- Colors
+- Typography
+- Content
+- HTML
+↓
+Generate Design System
+↓
+Create Single Page Application Structure
+↓
+Generate ZIP File
+↓
+Send ZIP to Frontend
+↓
+User Downloads ZIP
+
+---
+
+1. Functional Requirements
+
+3.1 URL Input Module
+
+Features:
+
+URL input field
+
+Validate URL
+
+Extract button
+
+Error handling
+
+Loading state
+
+---
+
+3.2 Website Scraping Module
+
+Responsibilities
+
+Open website
+
+Wait for rendering
+
+Execute JS
+
+Read DOM
+
+Extract assets
+
+Technology
+
+Playwright
+
+Extract:
+
+HTML
+
+Images
+
+Typography
+
+Colors
+
+Text content
+
+Buttons
+
+Navigation
+
+---
+
+3.3 Image Extraction Module
+
+Must Extract
+
+img tags
+
+SVGs
+
+background images
+
+icons
+
+logos
+
+Output
+
+/assets/images/
+
+---
+
+3.4 Typography Extraction Module
+
+Detect
+
+font-family
+
+font-size
+
+font-weight
+
+line-height
+
+letter-spacing
+
+Example Output
+
+{
+"headingFont": "Poppins",
+"bodyFont": "Inter"
+}
+
+---
+
+3.5 Color Palette Module
+
+Detect
+
+Primary color
+
+Secondary color
+
+Accent colors
+
+Background colors
+
+Border colors
+
+Remove
+
+Duplicate colors
+
+Transparent colors
+
+Example Output
+
+{
+"primary": "#2563EB",
+"secondary": "#0F172A",
+"accent": "#F97316"
+}
+
+---
+
+3.6 Content Extraction Module
+
+Extract
+
+H1-H6 headings
+
+Paragraphs
+
+Buttons
+
+Links
+
+Lists
+
+Footer text
+
+Store
+
+content.json
+
+---
+
+---
+
+3.7 SPA Generator Module
+
+Generate
+
+Navbar
+
+Hero section
+
+Features section
+
+Testimonials
+
+CTA section
+
+Footer
+
+Framework
+
+React / Next.js
+
+---
+
+3.8 ZIP Generator Module
+
+ZIP Must Contain
+
+project/
+│
+├── assets/
+├── content.json
+├── design-system.json
+├── index.html
+├── package.json
+└── [README.md](http://readme.md/)
+
+---
+
+1. Non-Functional Requirements
+
+Performance
+
+Extraction under 30 seconds
+
+Parallel image downloads
+
+Optimized memory usage
+
+Security
+
+URL validation
+
+Prevent malicious URLs
+
+Timeout protection
+
+Rate limiting
+
+Scalability
+
+Queue support
+
+Async processing
+
+Multi-user support
+
+Reliability
+
+Retry failed downloads
+
+Handle invalid websites
+
+Error logging
+
+---
+
+1. Frontend Requirements
+
+Framework
+
+Next.js
+
+Styling
+
+Tailwind CSS
+
+State Management
+
+Zustand or Context API
+
+Features
+
+URL input
+
+Loading spinner
+
+Progress bar
+
+Preview screen
+
+Download button
+
+Error popup
+
+---
+
+1. Backend Requirements
+
+Runtime
+
+Node.js
+
+Framework
+
+Express.js
+
+Responsibilities
+
+API handling
+
+Scraping
+
+Asset download
+
+ZIP generation
+
+File streaming
+
+---
+
+1. Scraping Requirements
+
+Browser Automation
+
+Playwright
+
+Why?
+
+React support
+
+Dynamic rendering
+
+Full browser rendering
+
+Better stability
+
+Browser Features
+
+Headless mode
+
+Screenshot support
+
+Auto waiting
+
+JS execution
+
+---
+
+1. Database Requirements
+
+Database
+
+Supabase
+
+Store
+
+User data
+
+Project history
+
+Generated metadata
+
+Extraction logs
+
+---
+
+1. API Requirements
+
+Main Endpoint
+
+POST /api/extract
+
+Request Example
+
+{
+"url": "[https://example.com](https://example.com/)"
+}
+
+Response Example
+
+{
+"success": true,
+"downloadUrl": "/downloads/project.zip"
+}
+
+---
+
+1. Folder Structure
+
+project/
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   └── styles/
+│
+├── backend/
+│   ├── scraper/
+│   ├── extractor/
+│   ├── zip/
+│   └── api/
+│
+├── generated/
+│
+└── assets/
+
+---
+
+1. Required NPM Packages
+
+Frontend
+
+npm install next react react-dom
+npm install tailwindcss
+npm install axios
+npm install zustand
+npm install framer-motion
+
+---
+
+Backend
+
+npm install express
+npm install playwright
+npm install axios
+npm install archiver
+npm install jszip
+npm install cors
+npm install dotenv
+npm install multer
+
+---
+
+1. Development Phases
+
+Phase 1
+
+Basic URL extraction
+
+Build
+
+URL input
+
+API call
+
+Playwright open page
+
+Extract title
+
+---
+
+Phase 2
+
+Asset extraction
+
+Build
+
+Images
+
+Colors
+
+Fonts
+
+Content
+
+---
+
+Phase 3
+
+Design system
+
+Build
+
+Palette generation
+
+Typography generation
+
+JSON output
+
+---
+
+Phase 4
+
+SPA generation
+
+Build
+
+React components
+
+Tailwind styles
+
+Layout generation
+
+---
+
+Phase 5
+
+ZIP export
+
+Build
+
+ZIP streaming
+
+Download support
+
+---
+
+1. Sample Pages
+
+Landing Page
+
+Contains
+
+URL input
+
+CTA button
+
+Demo section
+
+Feature cards
+
+---
+
+Processing Page
+
+Shows
+
+Extracting Images...
+Detecting Typography...
+Generating ZIP...
+
+---
+
+Results Dashboard
+
+Shows
+
+Images
+
+Palette
+
+Typography
+
+Extracted content
+
+Download button
+
+---
+
+1. Challenges
+
+Dynamic Websites
+
+React sites render late.
+
+Solution
+
+Playwright rendering.
+
+---
+
+Scraping Protection
+
+Some sites block bots.
+
+Solution
+
+Stealth mode
+
+Proxies
+
+Delays
+
+---
+
+Large Websites
+
+Too many assets.
+
+Solution
+
+Asset limits
+
+Compression
+
+Lazy loading
+
+---
+
+1. Future Features
+
+AI Features
+
+AI redesign
+
+Dark mode generation
+
+Figma export
+
+Mobile app conversion
+
+SEO optimization
+
+---
+
+---
+
+1. Final Output Example
+
+User Input
+
+[https://startup.com](https://startup.com/)
+
+System Generates
+
+✔️ Images Folder
+✔️ Color Palette
+✔️ Typography System
+✔️ Content JSON
+✔️ React SPA
+✔️ ZIP Download
+
+Final Download
+
+startup-assets.zip

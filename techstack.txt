@@ -1,0 +1,10 @@
+This document explains the complete technology stack used for building the creator collaboration platform. it includes
+frontend:Next.js
+backend:Supabase
+deployment:vercel
+version control:github
+
+Styling:Tailwind CSS
+Backend:Node.js
+Scraping:Playwright
+ZIP Generation:Archiver
