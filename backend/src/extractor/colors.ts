@@ -2,10 +2,20 @@ import { Page } from "playwright";
 import type { ColorPalette } from "../scraper";
 
 export async function extractColors(page: Page, html: string): Promise<ColorPalette> {
-  // ── Layer 1: Node.js regex on raw HTML source (most reliable for JS-heavy SPAs) ──
   const nodeFreq: Record<string, number> = {};
 
-  // Hex colors from raw HTML (style tags, inline styles, CSS-in-JS output)
+  // ── Layer 0: Meta tags — most reliable brand color on any site ──
+  // <meta name="theme-color" content="#fc8019"> — used by almost every PWA/modern site
+  const themeColorMatch = html.match(/name=["']theme-color["'][^>]*content=["']([^"']+)["']/i)
+    ?? html.match(/content=["']([^"']+)["'][^>]*name=["']theme-color["']/i);
+  if (themeColorMatch) nodeFreq[themeColorMatch[1].trim()] = (nodeFreq[themeColorMatch[1].trim()] ?? 0) + 50;
+
+  // <meta name="msapplication-TileColor" content="#...">
+  const tileColorMatch = html.match(/name=["']msapplication-TileColor["'][^>]*content=["']([^"']+)["']/i)
+    ?? html.match(/content=["']([^"']+)["'][^>]*name=["']msapplication-TileColor["']/i);
+  if (tileColorMatch) nodeFreq[tileColorMatch[1].trim()] = (nodeFreq[tileColorMatch[1].trim()] ?? 0) + 30;
+
+  // ── Layer 1: Hex and rgb() in raw HTML ──
   const hexRe = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
   let m: RegExpExecArray | null;
   while ((m = hexRe.exec(html)) !== null) {
@@ -13,7 +23,6 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
     nodeFreq[hex] = (nodeFreq[hex] ?? 0) + 5;
   }
 
-  // rgb() / rgba() from raw HTML
   const rgbRe = /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/g;
   while ((m = rgbRe.exec(html)) !== null) {
     const hex = "#" + [m[1], m[2], m[3]].map((n) => parseInt(n).toString(16).padStart(2, "0")).join("");
@@ -24,7 +33,6 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
   const browserRaw = await page.evaluate(() => {
     const freq: Record<string, number> = {};
 
-    // <style> tag text
     for (const styleEl of Array.from(document.querySelectorAll("style"))) {
       const text = styleEl.textContent ?? "";
       const hexMatches = text.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
@@ -33,7 +41,6 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
       for (const c of rgbMatches) freq[c] = (freq[c] ?? 0) + 8;
     }
 
-    // CSS stylesheets (same-origin)
     for (const sheet of Array.from(document.styleSheets)) {
       try {
         for (const rule of Array.from(sheet.cssRules ?? [])) {
@@ -49,7 +56,6 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
       } catch { /* cross-origin */ }
     }
 
-    // Computed styles
     for (const el of Array.from(document.querySelectorAll(
       "body,header,nav,main,section,footer,h1,h2,h3,p,button,a,span,div,li"
     )).slice(0, 600)) {
@@ -62,7 +68,6 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
       }
     }
 
-    // SVG fill/stroke
     for (const el of Array.from(document.querySelectorAll("[fill],[stroke]")).slice(0, 300)) {
       const fill = el.getAttribute("fill");
       const stroke = el.getAttribute("stroke");
@@ -70,7 +75,6 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
       if (stroke && stroke !== "none" && stroke !== "currentColor") freq[stroke] = (freq[stroke] ?? 0) + 4;
     }
 
-    // Inline styles
     for (const el of Array.from(document.querySelectorAll("[style]")).slice(0, 300)) {
       const style = (el as HTMLElement).style;
       for (const prop of ["color", "background", "backgroundColor", "borderColor"]) {
@@ -82,11 +86,9 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
     return Object.entries(freq).sort((a, b) => b[1] - a[1]).map(([c]) => c);
   });
 
-  // ── Merge both layers ──
+  // ── Merge ──
   const merged: Record<string, number> = { ...nodeFreq };
-  for (const c of browserRaw) {
-    merged[c] = (merged[c] ?? 0) + 3;
-  }
+  for (const c of browserRaw) merged[c] = (merged[c] ?? 0) + 3;
 
   const toHex = (c: string): string | null => {
     c = c.trim();
@@ -111,11 +113,9 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
     return (max - min) / (l < 0.5 ? max + min : 2 - max - min);
   };
 
-  // Build deduplicated palette sorted by merged frequency
-  const sorted = Object.entries(merged).sort((a, b) => b[1] - a[1]).map(([c]) => c);
   const palette: string[] = [];
   const seen = new Set<string>();
-  for (const c of sorted) {
+  for (const [c] of Object.entries(merged).sort((a, b) => b[1] - a[1])) {
     const hex = toHex(c);
     if (!hex || seen.has(hex)) continue;
     seen.add(hex);

@@ -2,42 +2,48 @@ import { Page } from "playwright";
 import type { PageContent } from "../scraper";
 
 export async function extractContent(page: Page, html: string): Promise<PageContent> {
+  // ── Layer 0: Meta / OG tags — universal, works on every site ──
+  const getMeta = (pattern: RegExp): string => {
+    const m = html.match(pattern);
+    return m ? m[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim() : "";
+  };
+
+  const ogTitle       = getMeta(/property=["']og:title["'][^>]*content=["']([^"']+)["']/i)
+                     ?? getMeta(/content=["']([^"']+)["'][^>]*property=["']og:title["']/i) ?? "";
+  const ogDescription = getMeta(/property=["']og:description["'][^>]*content=["']([^"']+)["']/i)
+                     ?? getMeta(/content=["']([^"']+)["'][^>]*property=["']og:description["']/i) ?? "";
+  const metaDesc      = getMeta(/name=["']description["'][^>]*content=["']([^"']+)["']/i)
+                     ?? getMeta(/content=["']([^"']+)["'][^>]*name=["']description["']/i) ?? "";
+  const ogSiteName    = getMeta(/property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)
+                     ?? getMeta(/content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i) ?? "";
+
   // ── Layer 1: Browser-side (live DOM) ──
   const browser = await page.evaluate(() => {
     const clean = (t: string) => t.replace(/\s+/g, " ").trim();
 
-    // Headings: standard tags + aria role
     const headings: string[] = [];
-    const headingEls = Array.from(document.querySelectorAll(
-      "h1,h2,h3,h4,h5,h6,[role='heading']"
-    )).slice(0, 30);
-    for (const el of headingEls) {
+    for (const el of Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6,[role='heading']")).slice(0, 30)) {
       const t = clean(el.textContent ?? "");
       if (t && t.length > 1 && t.length < 200) headings.push(t);
     }
 
-    // Paragraphs: <p> + common content divs/spans
     const paragraphs: string[] = [];
-    const paraEls = Array.from(document.querySelectorAll(
+    for (const el of Array.from(document.querySelectorAll(
       "p,[role='paragraph'],article p,main p,.description,.content p,.subtitle,.tagline"
-    )).slice(0, 40);
-    for (const el of paraEls) {
+    )).slice(0, 40)) {
       const t = clean(el.textContent ?? "");
       if (t.length > 20 && t.length < 1000) paragraphs.push(t);
       if (paragraphs.length >= 20) break;
     }
 
-    // Buttons / CTAs: broad search
     const buttons: string[] = [];
-    const btnEls = Array.from(document.querySelectorAll(
+    for (const el of Array.from(document.querySelectorAll(
       "button,[role='button'],a.btn,.btn,.button,.cta,[class*='btn'],[class*='button'],[class*='cta']"
-    )).slice(0, 20);
-    for (const el of btnEls) {
+    )).slice(0, 20)) {
       const t = clean(el.textContent ?? "");
       if (t && t.length < 60) buttons.push(t);
     }
 
-    // Links
     const links: { text: string; href: string }[] = [];
     for (const el of Array.from(document.querySelectorAll("a[href]")).slice(0, 40)) {
       const t = clean(el.textContent ?? "");
@@ -45,27 +51,19 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
       if (t && t.length < 80) links.push({ text: t, href });
     }
 
-    // Nav items: nav/header links + aria navigation
     const navItems: string[] = [];
-    const navEls = Array.from(document.querySelectorAll(
-      "nav a, header a, [role='navigation'] a, [aria-label*='nav' i] a"
-    )).slice(0, 15);
-    for (const el of navEls) {
+    for (const el of Array.from(document.querySelectorAll(
+      "nav a,header a,[role='navigation'] a,[aria-label*='nav' i] a"
+    )).slice(0, 15)) {
       const t = clean(el.textContent ?? "");
       if (t && t.length < 50) navItems.push(t);
     }
 
-    // Meta description as a paragraph fallback
-    const metaDesc = (document.querySelector("meta[name='description']") as HTMLMetaElement)?.content?.trim();
+    return { headings, paragraphs, buttons, links, navItems };
+  }) as { headings: string[]; paragraphs: string[]; buttons: string[]; links: { text: string; href: string }[]; navItems: string[] };
 
-    return { headings, paragraphs, buttons, links, navItems, metaDesc: metaDesc ?? "" };
-  }) as { headings: string[]; paragraphs: string[]; buttons: string[]; links: { text: string; href: string }[]; navItems: string[]; metaDesc: string };
-
-  // ── Layer 2: HTML regex fallback (catches content missed by JS rendering) ──
+  // ── Layer 2: Raw HTML regex fallback ──
   const htmlHeadings: string[] = [];
-  const htmlParagraphs: string[] = [];
-
-  // Extract text from heading tags in raw HTML
   const hTagRe = /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi;
   let hm: RegExpExecArray | null;
   while ((hm = hTagRe.exec(html)) !== null) {
@@ -74,7 +72,7 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
     if (htmlHeadings.length >= 20) break;
   }
 
-  // Extract text from <p> tags in raw HTML
+  const htmlParagraphs: string[] = [];
   const pTagRe = /<p[^>]*>([\s\S]*?)<\/p>/gi;
   let pm: RegExpExecArray | null;
   while ((pm = pTagRe.exec(html)) !== null) {
@@ -83,27 +81,31 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
     if (htmlParagraphs.length >= 20) break;
   }
 
-  // ── Merge: prefer browser results, fill gaps with HTML parse ──
+  // ── Merge all layers ──
   const mergeUnique = (a: string[], b: string[]): string[] => {
     const seen = new Set(a.map((s) => s.toLowerCase()));
     return [...a, ...b.filter((s) => !seen.has(s.toLowerCase()))];
   };
 
-  let headings = mergeUnique(browser.headings, htmlHeadings).slice(0, 20);
-  let paragraphs = mergeUnique(browser.paragraphs, htmlParagraphs);
-
-  // If still no paragraphs, use meta description
-  if (paragraphs.length === 0 && browser.metaDesc) {
-    paragraphs = [browser.metaDesc];
+  // Headings: OG title first if DOM gives nothing
+  let headings = mergeUnique(browser.headings, htmlHeadings);
+  if (headings.length === 0 && ogTitle) headings = [ogTitle];
+  if (ogSiteName && !headings.some((h) => h.toLowerCase().includes(ogSiteName.toLowerCase()))) {
+    headings = [ogSiteName, ...headings];
   }
 
-  // Deduplicate buttons (remove duplicates from broad selector)
-  const buttons = [...new Set(browser.buttons)].slice(0, 10);
+  // Paragraphs: DOM → HTML parse → OG description → meta description
+  let paragraphs = mergeUnique(browser.paragraphs, htmlParagraphs);
+  if (ogDescription && !paragraphs.some((p) => p.toLowerCase().includes(ogDescription.slice(0, 30).toLowerCase()))) {
+    paragraphs = [ogDescription, ...paragraphs];
+  } else if (paragraphs.length === 0 && metaDesc) {
+    paragraphs = [metaDesc];
+  }
 
   return {
-    headings,
+    headings: headings.slice(0, 20),
     paragraphs: paragraphs.slice(0, 20),
-    buttons,
+    buttons: [...new Set(browser.buttons)].slice(0, 10),
     links: browser.links,
     navItems: [...new Set(browser.navItems)],
   };
