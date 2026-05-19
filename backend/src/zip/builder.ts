@@ -12,17 +12,29 @@ export async function buildZip(data: ScrapeResult, res: Response): Promise<void>
     archive.on("finish", resolve);
     archive.pipe(res);
 
-    // ── JSON data files ──
-    archive.append(JSON.stringify(data.content, null, 2), { name: "content.json" });
-    archive.append(JSON.stringify(buildDesignSystem(data), null, 2), { name: "design-system.json" });
+    // ── Images/ ──
+    // (downloaded asynchronously below)
 
-    // ── Generated files ──
-    archive.append(generateHtml(data), { name: "index.html" });
-    archive.append(generateCss(data), { name: "styles.css" });
-    archive.append(generatePackageJson(data.title), { name: "package.json" });
+    // ── Content/ ──
+    archive.append(generateContentJson(data), { name: "Content/content.json" });
+    archive.append(generateContentHtml(data), { name: "Content/content.html" });
+
+    // ── Design System/ ──
+    archive.append(generateDesignSystemJson(data), { name: "Design System/design-system.json" });
+    archive.append(generateSpaHtml(data), { name: "Design System/index.html" });
+    archive.append(generateCss(data), { name: "Design System/styles.css" });
+
+    // ── Colour Palette/ ──
+    archive.append(generatePaletteJson(data), { name: "Colour Palette/palette.json" });
+    archive.append(generatePaletteHtml(data), { name: "Colour Palette/palette.html" });
+
+    // ── Typography/ ──
+    archive.append(generateTypographyJson(data), { name: "Typography/typography.json" });
+    archive.append(generateTypographyHtml(data), { name: "Typography/typography.html" });
+
+    // ── README ──
     archive.append(generateReadme(data), { name: "README.md" });
 
-    // ── Images ──
     downloadImages(data.images, archive)
       .then(() => archive.finalize())
       .catch(reject);
@@ -30,34 +42,296 @@ export async function buildZip(data: ScrapeResult, res: Response): Promise<void>
 }
 
 // ─────────────────────────────────────────────
-// Design system JSON
+// Content/
 // ─────────────────────────────────────────────
-function buildDesignSystem(data: ScrapeResult) {
-  return {
+function generateContentJson(data: ScrapeResult): string {
+  return JSON.stringify({
+    source: data.url,
+    title: data.title,
+    extractedAt: new Date().toISOString(),
+    headings: data.content.headings,
+    paragraphs: data.content.paragraphs,
+    buttons: data.content.buttons,
+    links: data.content.links,
+    navItems: data.content.navItems,
+  }, null, 2);
+}
+
+function generateContentHtml(data: ScrapeResult): string {
+  const { content, title, url } = data;
+
+  const headingItems = content.headings.map((h, i) =>
+    `<li class="item"><span class="idx">${i + 1}</span>${esc(h)}</li>`
+  ).join("\n");
+
+  const paraItems = content.paragraphs.map((p, i) =>
+    `<li class="item"><span class="idx">${i + 1}</span><p>${esc(p)}</p></li>`
+  ).join("\n");
+
+  const buttonItems = content.buttons.map((b) =>
+    `<span class="badge">${esc(b)}</span>`
+  ).join("\n");
+
+  const navItems = content.navItems.map((n) =>
+    `<span class="badge">${esc(n)}</span>`
+  ).join("\n");
+
+  const linkItems = content.links.map((l) =>
+    `<li class="item link-item"><a href="${esc(l.href)}" style="color:#a855f7">${esc(l.text)}</a></li>`
+  ).join("\n");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content — ${esc(title)}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.6; }
+    .header { margin-bottom: 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
+    .header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .header p { font-size: 0.85rem; color: #71717a; margin: 0; }
+    .section { margin-bottom: 2.5rem; }
+    .section h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; color: #a855f7; margin-bottom: 1rem; }
+    ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+    .item { display: flex; gap: 1rem; align-items: flex-start; background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; }
+    .idx { color: #52525b; font-size: 0.75rem; min-width: 1.5rem; padding-top: 0.1rem; }
+    .item p { margin: 0; color: #a1a1aa; }
+    .link-item { color: #a855f7; font-size: 0.85rem; }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .badge { background: #27272a; border: 1px solid #3f3f46; border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.8rem; color: #d4d4d8; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${esc(title)}</h1>
+    <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
+  </div>
+
+  <div class="section">
+    <h2>Headings (${content.headings.length})</h2>
+    <ul>${headingItems}</ul>
+  </div>
+
+  <div class="section">
+    <h2>Paragraphs (${content.paragraphs.length})</h2>
+    <ul>${paraItems}</ul>
+  </div>
+
+  <div class="section">
+    <h2>Navigation Items</h2>
+    <div class="badges">${navItems || '<span style="color:#52525b">None found</span>'}</div>
+  </div>
+
+  <div class="section">
+    <h2>Buttons / CTAs</h2>
+    <div class="badges">${buttonItems || '<span style="color:#52525b">None found</span>'}</div>
+  </div>
+
+  <div class="section">
+    <h2>Links (${content.links.length})</h2>
+    <ul>${linkItems}</ul>
+  </div>
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────
+// Colour Palette/
+// ─────────────────────────────────────────────
+function generatePaletteJson(data: ScrapeResult): string {
+  return JSON.stringify({
+    source: data.url,
+    extractedAt: new Date().toISOString(),
+    primary: data.colors.primary,
+    secondary: data.colors.secondary,
+    accent: data.colors.accent,
+    background: data.colors.background,
+    all: data.colors.all,
+  }, null, 2);
+}
+
+function generatePaletteHtml(data: ScrapeResult): string {
+  const { colors, title, url } = data;
+
+  const roles = [
+    { label: "Primary", value: colors.primary },
+    { label: "Secondary", value: colors.secondary },
+    { label: "Accent", value: colors.accent },
+    { label: "Background", value: colors.background },
+  ];
+
+  const roleSwatches = roles.map(({ label, value }) => `
+    <div class="swatch-wrap">
+      <div class="swatch large" style="background:${value}"></div>
+      <div class="swatch-meta">
+        <span class="swatch-role">${label}</span>
+        <span class="swatch-hex">${value}</span>
+      </div>
+    </div>`).join("");
+
+  const allSwatches = colors.all.map((c) => `
+    <div class="swatch-wrap small">
+      <div class="swatch" style="background:${c}"></div>
+      <span class="swatch-hex">${c}</span>
+    </div>`).join("");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colour Palette — ${esc(title)}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; }
+    .header { margin-bottom: 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
+    .header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .header p { font-size: 0.85rem; color: #71717a; margin: 0; }
+    .section { margin-bottom: 2.5rem; }
+    .section h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; color: #a855f7; margin-bottom: 1.25rem; }
+    .role-grid { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+    .swatch-wrap { display: flex; flex-direction: column; gap: 0.5rem; }
+    .swatch { width: 120px; height: 80px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); }
+    .swatch.large { width: 140px; height: 100px; }
+    .swatch-meta { display: flex; flex-direction: column; gap: 0.15rem; }
+    .swatch-role { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; }
+    .swatch-hex { font-size: 0.8rem; font-family: monospace; color: #a1a1aa; }
+    .all-grid { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .swatch-wrap.small .swatch { width: 72px; height: 56px; }
+    .swatch-wrap.small .swatch-hex { font-size: 0.7rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Colour Palette — ${esc(title)}</h1>
+    <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
+  </div>
+
+  <div class="section">
+    <h2>Brand Colours</h2>
+    <div class="role-grid">${roleSwatches}</div>
+  </div>
+
+  <div class="section">
+    <h2>All Extracted Colours (${colors.all.length})</h2>
+    <div class="all-grid">${allSwatches}</div>
+  </div>
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────
+// Typography/
+// ─────────────────────────────────────────────
+function generateTypographyJson(data: ScrapeResult): string {
+  return JSON.stringify({
+    source: data.url,
+    extractedAt: new Date().toISOString(),
+    headingFont: data.typography.headingFont,
+    bodyFont: data.typography.bodyFont,
+    sizes: data.typography.sizes,
+  }, null, 2);
+}
+
+function generateTypographyHtml(data: ScrapeResult): string {
+  const { typography, title, url } = data;
+  const googleFonts = buildGoogleFontsUrl(typography.headingFont, typography.bodyFont);
+
+  const sizeRows = Object.entries(typography.sizes).map(([tag, size]) => `
+    <tr>
+      <td class="tag">&lt;${tag}&gt;</td>
+      <td class="size">${size}</td>
+      <td class="preview" style="font-size:${size};font-family:'${typography.headingFont}',sans-serif">
+        The quick brown fox
+      </td>
+    </tr>`).join("");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Typography — ${esc(title)}</title>
+  ${googleFonts ? `<link rel="preconnect" href="https://fonts.googleapis.com" />\n  <link href="${googleFonts}" rel="stylesheet" />` : ""}
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.6; }
+    .header { margin-bottom: 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
+    .header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .header p { font-size: 0.85rem; color: #71717a; margin: 0; }
+    .section { margin-bottom: 2.5rem; }
+    .section h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; color: #a855f7; margin-bottom: 1.25rem; }
+    .font-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .font-card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 1.5rem; }
+    .font-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #71717a; margin-bottom: 0.5rem; }
+    .font-name { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
+    .font-preview-h { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.5rem; }
+    .font-preview-b { font-size: 1rem; line-height: 1.6; color: #a1a1aa; }
+    table { width: 100%; border-collapse: collapse; background: #18181b; border-radius: 12px; overflow: hidden; }
+    th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; border-bottom: 1px solid #27272a; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #1c1c1e; vertical-align: middle; }
+    td.tag { font-family: monospace; font-size: 0.85rem; color: #a855f7; width: 80px; }
+    td.size { font-family: monospace; font-size: 0.85rem; color: #71717a; width: 80px; }
+    td.preview { color: #d4d4d8; }
+    @media (max-width: 600px) { .font-cards { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Typography — ${esc(title)}</h1>
+    <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
+  </div>
+
+  <div class="section">
+    <h2>Fonts</h2>
+    <div class="font-cards">
+      <div class="font-card">
+        <div class="font-label">Heading Font</div>
+        <div class="font-name" style="font-family:'${esc(typography.headingFont)}',sans-serif">${esc(typography.headingFont)}</div>
+        <div class="font-preview-h" style="font-family:'${esc(typography.headingFont)}',sans-serif">Extract Any Website In Seconds</div>
+      </div>
+      <div class="font-card">
+        <div class="font-label">Body Font</div>
+        <div class="font-name" style="font-family:'${esc(typography.bodyFont)}',sans-serif">${esc(typography.bodyFont)}</div>
+        <div class="font-preview-b" style="font-family:'${esc(typography.bodyFont)}',sans-serif">The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Type Scale</h2>
+    <table>
+      <thead>
+        <tr><th>Element</th><th>Size</th><th>Preview</th></tr>
+      </thead>
+      <tbody>${sizeRows}</tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────
+// Design System/
+// ─────────────────────────────────────────────
+function generateDesignSystemJson(data: ScrapeResult): string {
+  return JSON.stringify({
     source: data.url,
     title: data.title,
     extractedAt: new Date().toISOString(),
     colors: data.colors,
     typography: data.typography,
-    content: {
-      headingsCount: data.content.headings.length,
-      paragraphsCount: data.content.paragraphs.length,
-      buttonsCount: data.content.buttons.length,
-      navItemsCount: data.content.navItems.length,
+    stats: {
+      headings: data.content.headings.length,
+      paragraphs: data.content.paragraphs.length,
+      buttons: data.content.buttons.length,
+      navItems: data.content.navItems.length,
+      images: data.images.length,
     },
-    images: {
-      total: data.images.length,
-      urls: data.images,
-    },
-  };
+  }, null, 2);
 }
 
-// ─────────────────────────────────────────────
-// Full SPA HTML
-// ─────────────────────────────────────────────
-function generateHtml(data: ScrapeResult): string {
+function generateSpaHtml(data: ScrapeResult): string {
   const { typography, colors, content, title, url } = data;
-
   const googleFonts = buildGoogleFontsUrl(typography.headingFont, typography.bodyFont);
 
   const navLinks = content.navItems.length
@@ -66,14 +340,11 @@ function generateHtml(data: ScrapeResult): string {
 
   const featureSections = content.paragraphs
     .slice(1, 7)
-    .map(
-      (p, i) => `
+    .map((p, i) => `
     <div class="card">
       <h3>${esc(content.headings[i + 1] ?? `Section ${i + 2}`)}</h3>
       <p>${esc(p)}</p>
-    </div>`
-    )
-    .join("\n");
+    </div>`).join("\n");
 
   const ctaButtons = content.buttons
     .slice(0, 3)
@@ -91,15 +362,11 @@ function generateHtml(data: ScrapeResult): string {
 </head>
 <body>
 
-  <!-- NAVBAR -->
   <nav class="navbar">
     <span class="brand">${esc(title)}</span>
-    <div class="nav-links">
-      ${navLinks}
-    </div>
+    <div class="nav-links">${navLinks}</div>
   </nav>
 
-  <!-- HERO -->
   <section class="hero">
     <div class="container">
       <h1>${esc(content.headings[0] ?? title)}</h1>
@@ -110,25 +377,17 @@ function generateHtml(data: ScrapeResult): string {
     </div>
   </section>
 
-  <!-- COLOR PALETTE -->
   <section class="section">
     <div class="container">
-      <h2>Color Palette</h2>
+      <h2>Colour Palette</h2>
       <div class="palette">
-        ${colors.all
-          .slice(0, 10)
-          .map(
-            (c) =>
-              `<div class="swatch" style="background:${c}" title="${c}">
-          <span class="swatch-label">${c}</span>
-        </div>`
-          )
-          .join("\n        ")}
+        ${colors.all.slice(0, 12).map((c) =>
+          `<div class="swatch" style="background:${c}" title="${c}"><span class="swatch-label">${c}</span></div>`
+        ).join("\n        ")}
       </div>
     </div>
   </section>
 
-  <!-- TYPOGRAPHY -->
   <section class="section section-alt">
     <div class="container">
       <h2>Typography</h2>
@@ -147,21 +406,13 @@ function generateHtml(data: ScrapeResult): string {
     </div>
   </section>
 
-  ${
-    featureSections
-      ? `<!-- CONTENT SECTIONS -->
-  <section class="section">
+  ${featureSections ? `<section class="section">
     <div class="container">
       <h2>${esc(content.headings[1] ?? "Sections")}</h2>
-      <div class="grid">
-        ${featureSections}
-      </div>
+      <div class="grid">${featureSections}</div>
     </div>
-  </section>`
-      : ""
-  }
+  </section>` : ""}
 
-  <!-- FOOTER -->
   <footer class="footer">
     <p>Extracted from <a href="${esc(url)}" target="_blank">${esc(url)}</a></p>
     <p class="footer-sub">Generated by Asset Extractor</p>
@@ -171,17 +422,13 @@ function generateHtml(data: ScrapeResult): string {
 </html>`;
 }
 
-// ─────────────────────────────────────────────
-// CSS from design system
-// ─────────────────────────────────────────────
 function generateCss(data: ScrapeResult): string {
   const { colors, typography } = data;
-
   const sizes = Object.entries(typography.sizes)
     .map(([tag, size]) => `  ${tag} { font-size: ${size}; }`)
     .join("\n");
 
-  return `/* ── Design System — generated by Asset Extractor ── */
+  return `/* Design System — generated by Asset Extractor */
 
 :root {
   --color-primary:    ${colors.primary};
@@ -192,7 +439,6 @@ function generateCss(data: ScrapeResult): string {
   --font-body:        '${typography.bodyFont}', sans-serif;
 }
 
-/* Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -202,81 +448,34 @@ body {
   line-height: 1.6;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
-  line-height: 1.2;
-}
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); line-height: 1.2; }
 
-/* Type scale */
 ${sizes}
 
-/* Layout */
 .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
 
-/* Navbar */
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: var(--color-background);
-  border-bottom: 1px solid ${colors.primary}18;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+.navbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: var(--color-background); border-bottom: 1px solid ${colors.primary}18; position: sticky; top: 0; z-index: 100; }
 .brand { font-family: var(--font-heading); font-weight: 700; font-size: 1.25rem; }
 .nav-links { display: flex; gap: 2rem; }
 .nav-links a { color: var(--color-primary); text-decoration: none; font-size: 0.9rem; opacity: 0.7; transition: opacity 0.2s; }
 .nav-links a:hover { opacity: 1; }
 
-/* Hero */
 .hero { padding: 6rem 2rem; text-align: center; }
 .hero h1 { font-size: clamp(2rem, 5vw, 4rem); margin-bottom: 1.5rem; }
 .hero-sub { font-size: 1.125rem; opacity: 0.7; max-width: 600px; margin: 0 auto 2rem; }
 .cta-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 
-/* Button */
-.btn {
-  display: inline-block;
-  padding: 0.75rem 2rem;
-  border-radius: 999px;
-  background: var(--color-accent);
-  color: #fff;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: opacity 0.2s, transform 0.2s;
-}
+.btn { display: inline-block; padding: 0.75rem 2rem; border-radius: 999px; background: var(--color-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: opacity 0.2s, transform 0.2s; }
 .btn:hover { opacity: 0.85; transform: translateY(-1px); }
 
-/* Sections */
 .section { padding: 5rem 0; }
 .section-alt { background: ${colors.primary}08; }
 .section h2 { font-size: 2rem; margin-bottom: 2.5rem; }
 
-/* Color Palette */
 .palette { display: flex; flex-wrap: wrap; gap: 1rem; }
-.swatch {
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
-  border: 1px solid ${colors.primary}18;
-  position: relative;
-  cursor: pointer;
-}
-.swatch-label {
-  position: absolute;
-  bottom: -1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.65rem;
-  white-space: nowrap;
-  opacity: 0.6;
-  font-family: monospace;
-}
+.swatch { width: 80px; height: 80px; border-radius: 12px; border: 1px solid ${colors.primary}18; position: relative; cursor: pointer; }
+.swatch-label { position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.65rem; white-space: nowrap; opacity: 0.6; font-family: monospace; }
 
-/* Typography demo */
 .type-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 .type-card { padding: 2rem; background: ${colors.primary}06; border-radius: 16px; border: 1px solid ${colors.primary}12; }
 .type-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
@@ -285,18 +484,15 @@ ${sizes}
 .type-preview-heading { font-family: var(--font-heading); font-size: 1.1rem; opacity: 0.6; }
 .type-preview-body { font-family: var(--font-body); font-size: 1rem; opacity: 0.6; line-height: 1.6; }
 
-/* Grid cards */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
 .card { padding: 2rem; background: ${colors.primary}06; border-radius: 16px; border: 1px solid ${colors.primary}12; }
 .card h3 { margin-bottom: 0.75rem; font-size: 1.125rem; }
 .card p { font-size: 0.95rem; opacity: 0.7; line-height: 1.7; }
 
-/* Footer */
 .footer { padding: 3rem 2rem; text-align: center; border-top: 1px solid ${colors.primary}18; opacity: 0.5; font-size: 0.875rem; }
 .footer a { color: var(--color-accent); text-decoration: none; }
 .footer-sub { margin-top: 0.5rem; font-size: 0.75rem; }
 
-/* Responsive */
 @media (max-width: 768px) {
   .type-demo { grid-template-columns: 1fr; }
   .nav-links { display: none; }
@@ -305,7 +501,7 @@ ${sizes}
 }
 
 // ─────────────────────────────────────────────
-// Image downloader
+// Images/
 // ─────────────────────────────────────────────
 async function downloadImages(urls: string[], archive: archiver.Archiver): Promise<void> {
   await Promise.allSettled(
@@ -318,31 +514,11 @@ async function downloadImages(urls: string[], archive: archiver.Archiver): Promi
         });
         const ext = path.extname(new URL(url).pathname).split("?")[0] || ".png";
         const slug = Math.random().toString(36).slice(2, 8);
-        archive.append(Buffer.from(res.data), {
-          name: `assets/images/${slug}${ext}`,
-        });
+        archive.append(Buffer.from(res.data), { name: `Images/${slug}${ext}` });
       } catch {
         // skip unreachable images
       }
     })
-  );
-}
-
-// ─────────────────────────────────────────────
-// package.json
-// ─────────────────────────────────────────────
-function generatePackageJson(title: string): string {
-  const name = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50) || "extracted-site";
-  return JSON.stringify(
-    {
-      name,
-      version: "1.0.0",
-      description: `Extracted from ${title} — generated by Asset Extractor`,
-      scripts: { dev: "next dev", build: "next build", start: "next start" },
-      dependencies: { next: "^14.0.0", react: "^18.0.0", "react-dom": "^18.0.0" },
-    },
-    null,
-    2
   );
 }
 
@@ -356,19 +532,19 @@ Extracted from: ${data.url}
 Generated by: Asset Extractor
 Date: ${new Date().toISOString()}
 
-## Contents
+## Folder Structure
 
-| File | Description |
-|------|-------------|
-| index.html | Full single-page website using extracted design |
-| styles.css | Complete CSS with design tokens as CSS variables |
-| design-system.json | Colors, typography, and metadata |
-| content.json | All extracted text content |
-| assets/images/ | ${data.images.length} downloaded images |
+| Folder | Contents |
+|--------|----------|
+| Images/ | ${data.images.length} downloaded website images |
+| Content/ | Extracted text — headings, paragraphs, buttons, links |
+| Design System/ | Full SPA preview (index.html + styles.css) + design-system.json |
+| Colour Palette/ | Visual palette (palette.html) + palette.json |
+| Typography/ | Font preview (typography.html) + typography.json |
 
-## Design System
+## Design Tokens
 
-### Colors
+### Colours
 - Primary:    ${data.colors.primary}
 - Secondary:  ${data.colors.secondary}
 - Accent:     ${data.colors.accent}
@@ -380,8 +556,8 @@ Date: ${new Date().toISOString()}
 
 ## Usage
 
-Open \`index.html\` in a browser to preview the extracted site.
-CSS variables are in \`styles.css\` — customize as needed.
+Open any \`.html\` file in a browser to preview the extracted assets.
+Edit \`Design System/styles.css\` to customise the design tokens.
 `;
 }
 
