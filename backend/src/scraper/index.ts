@@ -37,28 +37,50 @@ export interface ScrapeResult {
 }
 
 export async function scrape(url: string): Promise<ScrapeResult> {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-web-security",
+    ],
+  });
 
   try {
     const context = await browser.newContext({
       userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-      viewport: { width: 1280, height: 800 },
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      viewport: { width: 1440, height: 900 },
+      extraHTTPHeaders: {
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      },
+    });
+
+    // Bypass bot detection: hide navigator.webdriver
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+      (window as any).chrome = { runtime: {} };
+      Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3] });
     });
 
     const page = await context.newPage();
 
-    // domcontentloaded is fast and works on all sites including ad-heavy ones.
-    // networkidle times out on sites with continuous requests (ads, analytics).
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-
-    // Wait for the load event, but don't fail if it takes too long
     await page.waitForLoadState("load", { timeout: 15_000 }).catch(() => {});
 
-    // Give JS frameworks a moment to render
-    await page.waitForTimeout(1500);
+    // Give React/Vue/Angular time to hydrate
+    await page.waitForTimeout(2500);
 
-    // Wait for any JS-triggered redirects to settle before reading content
+    // Scroll to trigger lazy-loaded images and below-fold content
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2));
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(800);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(500);
+
     await page.waitForLoadState("domcontentloaded", { timeout: 5_000 }).catch(() => {});
 
     const title = await page.title().catch(() => new URL(url).hostname);
@@ -66,8 +88,8 @@ export async function scrape(url: string): Promise<ScrapeResult> {
 
     const [images, colors, typography, content] = await Promise.all([
       extractImages(page, url),
-      extractColors(page),
-      extractTypography(page),
+      extractColors(page, html),
+      extractTypography(page, html),
       extractContent(page),
     ]);
 
