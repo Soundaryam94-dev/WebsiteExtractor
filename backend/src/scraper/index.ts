@@ -99,8 +99,14 @@ export async function scrape(url: string): Promise<ScrapeResult> {
     });
 
     // Try domcontentloaded first; fall back to "commit" (first byte) for slow sites
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 })
+    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 })
       .catch(() => page.goto(url, { waitUntil: "commit", timeout: 60_000 }));
+
+    // Hard block on 403/401/503
+    const status = response?.status() ?? 200;
+    if (status === 401 || status === 403) {
+      throw new Error(`Access denied (HTTP ${status}). This site blocks automated access.`);
+    }
     await page.waitForLoadState("load", { timeout: 20_000 }).catch(() => {});
 
     // Give React/Vue/Angular time to hydrate
@@ -117,6 +123,19 @@ export async function scrape(url: string): Promise<ScrapeResult> {
     await page.waitForLoadState("domcontentloaded", { timeout: 5_000 }).catch(() => {});
 
     const title = await page.title().catch(() => new URL(url).hostname);
+
+    // Detect bot-protection / access-denied pages
+    const blockedTitles = [
+      "access denied", "403 forbidden", "just a moment", "attention required",
+      "cloudflare", "robot", "captcha", "are you human", "security check",
+      "ddos protection", "checking your browser", "please wait",
+    ];
+    const titleLower = title.toLowerCase();
+    if (blockedTitles.some((t) => titleLower.includes(t))) {
+      throw new Error(
+        `This site is protected by bot detection (${title}). Try a different URL.`
+      );
+    }
     const html = await page.content().catch(() => "<html><body></body></html>");
 
     const [images, colors, typography, content] = await Promise.all([
