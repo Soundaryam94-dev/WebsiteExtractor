@@ -26,11 +26,17 @@ export interface PageContent {
   navItems: string[];
 }
 
+export interface CapturedImage {
+  filename: string;
+  buffer: Buffer;
+}
+
 export interface ScrapeResult {
   url: string;
   title: string;
   html: string;
   images: string[];
+  capturedImages: CapturedImage[];
   colors: ColorPalette;
   typography: Typography;
   content: PageContent;
@@ -58,7 +64,7 @@ export async function scrape(url: string): Promise<ScrapeResult> {
       },
     });
 
-    // Bypass bot detection: hide navigator.webdriver
+    // Bypass bot detection
     await context.addInitScript(() => {
       Object.defineProperty(navigator, "webdriver", { get: () => undefined });
       (window as any).chrome = { runtime: {} };
@@ -67,17 +73,42 @@ export async function scrape(url: string): Promise<ScrapeResult> {
 
     const page = await context.newPage();
 
+    // Intercept image responses during page load — browser fetches with proper cookies/headers
+    const capturedImages: CapturedImage[] = [];
+    const seenImageUrls = new Set<string>();
+
+    await page.route(/\.(png|jpe?g|gif|webp|svg|ico|avif)(\?.*)?$/i, async (route) => {
+      try {
+        const response = await route.fetch();
+        const reqUrl = route.request().url();
+
+        if (response.ok() && !seenImageUrls.has(reqUrl) && capturedImages.length < 30) {
+          const body = await response.body();
+          // Only keep images between 1KB and 5MB
+          if (body.length > 1024 && body.length < 5 * 1024 * 1024) {
+            const ext = reqUrl.match(/\.(png|jpe?g|gif|webp|svg|ico|avif)/i)?.[0] ?? ".png";
+            const slug = Math.random().toString(36).slice(2, 8);
+            capturedImages.push({ filename: `${slug}${ext}`, buffer: body });
+            seenImageUrls.add(reqUrl);
+          }
+        }
+        await route.fulfill({ response });
+      } catch {
+        await route.continue();
+      }
+    });
+
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForLoadState("load", { timeout: 15_000 }).catch(() => {});
 
     // Give React/Vue/Angular time to hydrate
     await page.waitForTimeout(2500);
 
-    // Scroll to trigger lazy-loaded images and below-fold content
+    // Scroll to trigger lazy-loaded images
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2));
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1200);
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1000);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(500);
 
@@ -93,7 +124,7 @@ export async function scrape(url: string): Promise<ScrapeResult> {
       extractContent(page, html),
     ]);
 
-    return { url, title, html, images, colors, typography, content };
+    return { url, title, html, images, capturedImages, colors, typography, content };
   } finally {
     await browser.close();
   }

@@ -35,7 +35,7 @@ export async function buildZip(data: ScrapeResult, res: Response): Promise<void>
     // ── README ──
     archive.append(generateReadme(data), { name: "README.md" });
 
-    downloadImages(data.images, archive)
+    addImages(data, archive)
       .then(() => archive.finalize())
       .catch(reject);
   });
@@ -501,13 +501,21 @@ ${sizes}
 }
 
 // ─────────────────────────────────────────────
-// Images/
+// Images/ — use browser-captured buffers, fall back to server-side download
 // ─────────────────────────────────────────────
-async function downloadImages(urls: string[], archive: archiver.Archiver): Promise<void> {
-  let downloaded = 0;
+async function addImages(data: ScrapeResult, archive: archiver.Archiver): Promise<void> {
+  // Primary: images captured by the browser during page load (bypasses CDN protection)
+  if (data.capturedImages.length > 0) {
+    for (const img of data.capturedImages) {
+      archive.append(img.buffer, { name: `Images/${img.filename}` });
+    }
+    return;
+  }
 
+  // Fallback: server-side download for simpler sites
+  let downloaded = 0;
   await Promise.allSettled(
-    urls.map(async (url) => {
+    data.images.map(async (url) => {
       try {
         const res = await axios.get<ArrayBuffer>(url, {
           responseType: "arraybuffer",
@@ -523,18 +531,16 @@ async function downloadImages(urls: string[], archive: archiver.Archiver): Promi
         const slug = Math.random().toString(36).slice(2, 8);
         archive.append(Buffer.from(res.data), { name: `Images/${slug}${ext}` });
         downloaded++;
-      } catch {
-        // skip unreachable images
-      }
+      } catch { /* skip */ }
     })
   );
 
-  // Always ensure Images/ folder exists in the ZIP
+  // Always ensure Images/ folder exists
   if (downloaded === 0) {
-    const lines = urls.length > 0
-      ? `Images could not be downloaded (CDN may require authentication or block bots).\n\nDetected image URLs (${urls.length}):\n${urls.slice(0, 20).join("\n")}`
+    const note = data.images.length > 0
+      ? `Images could not be downloaded (CDN protection).\n\nDetected URLs:\n${data.images.slice(0, 20).join("\n")}`
       : "No images were found on this page.";
-    archive.append(lines, { name: "Images/image-urls.txt" });
+    archive.append(note, { name: "Images/image-urls.txt" });
   }
 }
 
