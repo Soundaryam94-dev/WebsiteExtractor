@@ -1,6 +1,18 @@
 import { Page } from "playwright";
 import type { Typography } from "../scraper";
 
+// CSS system font keywords that are fallbacks, not real brand fonts
+const SYSTEM_FONTS = new Set([
+  "-apple-system", "blinkmacsystemfont", "system-ui", "ui-sans-serif",
+  "ui-serif", "ui-monospace", "ui-rounded", "sans-serif", "serif",
+  "monospace", "cursive", "fantasy", "segoe ui", "helvetica neue",
+  "helvetica", "arial", "noto sans", "liberation sans", "freesans",
+]);
+
+function isSystemFont(name: string): boolean {
+  return SYSTEM_FONTS.has(name.toLowerCase());
+}
+
 export async function extractTypography(page: Page, html: string): Promise<Typography> {
   // ── Layer 1: Browser computed styles ──
   const browser = await page.evaluate(() => {
@@ -13,22 +25,43 @@ export async function extractTypography(page: Page, html: string): Promise<Typog
       }
     }
 
+    // Try multiple heading selectors, take first non-system font from the full font stack
     let headingFont = "";
-    for (const sel of ["h1", "h2", "h3"]) {
+    for (const sel of ["h1", "h2", "h3", "h4", "header", "nav"]) {
       const el = document.querySelector(sel);
-      if (el) {
-        const f = getComputedStyle(el).fontFamily.split(",")[0].replace(/['"]/g, "").trim();
-        if (f && f !== "sans-serif" && f !== "serif") { headingFont = f; break; }
+      if (!el) continue;
+      const families = getComputedStyle(el).fontFamily
+        .split(",")
+        .map((f) => f.replace(/['"]/g, "").trim());
+      for (const f of families) {
+        const lower = f.toLowerCase();
+        const systemFonts = [
+          "-apple-system", "blinkmacsystemfont", "system-ui", "ui-sans-serif",
+          "ui-serif", "ui-monospace", "sans-serif", "serif", "monospace",
+          "segoe ui", "helvetica neue", "helvetica", "arial", "noto sans",
+        ];
+        if (f && !systemFonts.includes(lower)) { headingFont = f; break; }
       }
+      if (headingFont) break;
     }
 
     let bodyFont = "";
-    for (const sel of ["p", "body"]) {
+    for (const sel of ["p", "body", "main", "article"]) {
       const el = document.querySelector(sel);
-      if (el) {
-        const f = getComputedStyle(el).fontFamily.split(",")[0].replace(/['"]/g, "").trim();
-        if (f && f !== "sans-serif" && f !== "serif") { bodyFont = f; break; }
+      if (!el) continue;
+      const families = getComputedStyle(el).fontFamily
+        .split(",")
+        .map((f) => f.replace(/['"]/g, "").trim());
+      for (const f of families) {
+        const lower = f.toLowerCase();
+        const systemFonts = [
+          "-apple-system", "blinkmacsystemfont", "system-ui", "ui-sans-serif",
+          "ui-serif", "ui-monospace", "sans-serif", "serif", "monospace",
+          "segoe ui", "helvetica neue", "helvetica", "arial", "noto sans",
+        ];
+        if (f && !systemFonts.includes(lower)) { bodyFont = f; break; }
       }
+      if (bodyFont) break;
     }
 
     return { headingFont, bodyFont, sizes };
@@ -42,17 +75,16 @@ export async function extractTypography(page: Page, html: string): Promise<Typog
   const gfMatch = html.match(/fonts\.googleapis\.com\/css[^"']*family=([^"'&]+)/);
   if (gfMatch) {
     const firstFamily = decodeURIComponent(gfMatch[1]).split("|")[0].split(":")[0].replace(/\+/g, " ");
-    if (firstFamily) htmlHeadingFont = firstFamily;
+    if (firstFamily && !isSystemFont(firstFamily)) htmlHeadingFont = firstFamily;
   }
 
-  // font-family declarations in <style> tags
+  // @font-face src / font-family declarations in <style> tags (custom fonts only)
   const fontFamilyRe = /font-family\s*:\s*['"]?([A-Za-z0-9 _-]+)['"]?/gi;
   const fontMatches: string[] = [];
   let fm: RegExpExecArray | null;
   while ((fm = fontFamilyRe.exec(html)) !== null) {
     const name = fm[1].trim();
-    const lower = name.toLowerCase();
-    if (lower !== "sans-serif" && lower !== "serif" && lower !== "monospace" && name.length > 2) {
+    if (!isSystemFont(name) && name.length > 2) {
       fontMatches.push(name);
     }
   }
@@ -60,8 +92,13 @@ export async function extractTypography(page: Page, html: string): Promise<Typog
   if (fontMatches.length > 1 && !htmlBodyFont) htmlBodyFont = fontMatches[1];
 
   // ── Merge: prefer browser result, fall back to HTML parse ──
-  const headingFont = browser.headingFont || htmlHeadingFont || "sans-serif";
-  const bodyFont    = browser.bodyFont    || htmlBodyFont    || headingFont || "sans-serif";
+  const headingFont = (!isSystemFont(browser.headingFont) && browser.headingFont)
+    ? browser.headingFont
+    : htmlHeadingFont || "sans-serif";
+
+  const bodyFont = (!isSystemFont(browser.bodyFont) && browser.bodyFont)
+    ? browser.bodyFont
+    : htmlBodyFont || headingFont || "sans-serif";
 
   // Default sizes if browser couldn't compute them
   const defaultSizes: Record<string, string> = {

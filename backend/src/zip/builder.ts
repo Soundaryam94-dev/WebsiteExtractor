@@ -59,6 +59,7 @@ function generateContentJson(data: ScrapeResult): string {
 
 function generateContentHtml(data: ScrapeResult): string {
   const { content, title, url } = data;
+  const shortTitle = siteShortName(url, title);
 
   const headingItems = content.headings.map((h, i) =>
     `<li class="item"><span class="idx">${i + 1}</span>${esc(h)}</li>`
@@ -85,7 +86,7 @@ function generateContentHtml(data: ScrapeResult): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Content — ${esc(title)}</title>
+  <title>Content — ${esc(shortTitle)}</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.6; }
     .header { margin-bottom: 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
@@ -104,7 +105,7 @@ function generateContentHtml(data: ScrapeResult): string {
 </head>
 <body>
   <div class="header">
-    <h1>${esc(title)}</h1>
+    <h1>${esc(shortTitle)}</h1>
     <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
   </div>
 
@@ -153,6 +154,7 @@ function generatePaletteJson(data: ScrapeResult): string {
 
 function generatePaletteHtml(data: ScrapeResult): string {
   const { colors, title, url } = data;
+  const shortTitle = siteShortName(url, title);
 
   const roles = [
     { label: "Primary", value: colors.primary },
@@ -181,7 +183,7 @@ function generatePaletteHtml(data: ScrapeResult): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Colour Palette — ${esc(title)}</title>
+  <title>Colour Palette — ${esc(shortTitle)}</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; }
     .header { margin-bottom: 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
@@ -203,7 +205,7 @@ function generatePaletteHtml(data: ScrapeResult): string {
 </head>
 <body>
   <div class="header">
-    <h1>Colour Palette — ${esc(title)}</h1>
+    <h1>Colour Palette — ${esc(shortTitle)}</h1>
     <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
   </div>
 
@@ -235,6 +237,7 @@ function generateTypographyJson(data: ScrapeResult): string {
 
 function generateTypographyHtml(data: ScrapeResult): string {
   const { typography, title, url } = data;
+  const shortTitle = siteShortName(url, title);
   const googleFonts = buildGoogleFontsUrl(typography.headingFont, typography.bodyFont);
 
   const sizeRows = Object.entries(typography.sizes).map(([tag, size]) => `
@@ -251,7 +254,7 @@ function generateTypographyHtml(data: ScrapeResult): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Typography — ${esc(title)}</title>
+  <title>Typography — ${esc(shortTitle)}</title>
   ${googleFonts ? `<link rel="preconnect" href="https://fonts.googleapis.com" />\n  <link href="${googleFonts}" rel="stylesheet" />` : ""}
   <style>
     body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.6; }
@@ -277,7 +280,7 @@ function generateTypographyHtml(data: ScrapeResult): string {
 </head>
 <body>
   <div class="header">
-    <h1>Typography — ${esc(title)}</h1>
+    <h1>Typography — ${esc(shortTitle)}</h1>
     <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
   </div>
 
@@ -334,13 +337,7 @@ function generateSpaHtml(data: ScrapeResult): string {
   const { typography, colors, content, title, url } = data;
   const googleFonts = buildGoogleFontsUrl(typography.headingFont, typography.bodyFont);
 
-  // Short brand name: use hostname (e.g. "kfc") rather than full page title
-  const brandName = (() => {
-    try {
-      const host = new URL(url).hostname.replace(/^www\./, "");
-      return host.split(".")[0].toUpperCase();
-    } catch { return title.split("|")[0].trim() || title; }
-  })();
+  const brandName = siteShortName(url, title);
 
   const navLinks = content.navItems.length
     ? content.navItems.map((t) => `<a href="#">${esc(t)}</a>`).join("\n      ")
@@ -364,7 +361,7 @@ function generateSpaHtml(data: ScrapeResult): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${esc(title)}</title>
+  <title>${esc(brandName)}</title>
   ${googleFonts ? `<link rel="preconnect" href="https://fonts.googleapis.com" />\n  <link href="${googleFonts}" rel="stylesheet" />` : ""}
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -636,6 +633,11 @@ Edit \`Design System/styles.css\` to customise the design tokens.
 // ─────────────────────────────────────────────
 function esc(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function siteShortName(url: string, title: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, "").split(".")[0].toUpperCase(); }
+  catch { return title.split("|")[0].trim() || title; }
 }
 
 function buildGoogleFontsUrl(headingFont: string, bodyFont: string): string {
