@@ -1,4 +1,9 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import UrlInput from "./UrlInput";
+
+const Prism = dynamic(() => import("./Prism"), { ssr: false });
 
 const FEATURE_PILLS = ["Images & SVGs", "Color Palette", "Typography", "React SPA", "ZIP Download"];
 
@@ -10,64 +15,102 @@ const STATS = [
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16 overflow-hidden">
-      {/* Background glows */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-[800px] h-[500px] bg-purple-600/[0.08] rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/4 right-1/3 w-[250px] h-[250px] bg-violet-500/[0.06] rounded-full blur-[90px] pointer-events-none" />
-      <div className="absolute bottom-1/3 left-1/4 w-[200px] h-[200px] bg-purple-400/[0.04] rounded-full blur-[80px] pointer-events-none" />
+    <section className="relative min-h-screen flex flex-col overflow-hidden">
+      {/* Prism background */}
+      <div className="absolute inset-0 pointer-events-none opacity-40">
+        <Prism
+          animationType="rotate"
+          timeScale={0.4}
+          height={3.5}
+          baseWidth={5.5}
+          scale={3.8}
+          hueShift={0}
+          colorFrequency={1}
+          noise={0.3}
+          glow={1.2}
+          bloom={1}
+          transparent={true}
+          suspendWhenOffscreen={true}
+        />
+      </div>
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-dark-950/60 via-dark-950/30 to-dark-950/80 pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col items-center text-center max-w-4xl mx-auto gap-8">
-        {/* Badge */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 backdrop-blur-sm">
-          <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-          <span className="text-xs font-medium text-purple-300 tracking-widest uppercase">
-            AI-Powered Extraction
-          </span>
-        </div>
+      {/* Split layout */}
+      <div className="relative z-10 flex-1 flex flex-col md:flex-row min-h-screen pt-20">
 
-        {/* Heading */}
-        <h1 className="font-display text-5xl md:text-7xl font-bold leading-[1.08] tracking-tight">
-          <span className="bg-gradient-to-r from-purple-300 via-purple-400 to-violet-500 bg-clip-text text-transparent">
-            Extract Any Website
-          </span>
-          <br />
-          <span className="text-white">In Seconds.</span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="text-lg md:text-xl text-zinc-400 max-w-2xl leading-relaxed">
-          Paste a URL and receive a complete design system, all assets, and a
-          ready-to-use React SPA — packaged as a ZIP in under 30 seconds.
-        </p>
-
-        {/* URL Input */}
-        <div className="w-full mt-2">
-          <UrlInput />
-        </div>
-
-        {/* Feature pills */}
-        <div className="flex flex-wrap justify-center gap-2.5 mt-1">
-          {FEATURE_PILLS.map((feature) => (
-            <span
-              key={feature}
-              className="px-3.5 py-1.5 text-xs text-zinc-400 rounded-full bg-white/[0.04] border border-white/[0.07] hover:border-purple-500/30 hover:text-zinc-300 transition-colors duration-200"
-            >
-              ✓ {feature}
+        {/* LEFT — content */}
+        <div className="flex-1 flex flex-col justify-center px-8 md:px-16 py-16 md:py-24 gap-8
+                        md:border-r md:border-white/[0.06]">
+          {/* Badge */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 w-fit">
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+            <span className="text-xs font-medium text-purple-300 tracking-widest uppercase">
+              AI-Powered Extraction
             </span>
-          ))}
+          </div>
+
+          {/* Heading */}
+          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight">
+            <span className="bg-gradient-to-r from-purple-300 via-purple-400 to-violet-500 bg-clip-text text-transparent">
+              Extract Any
+              <br />Website
+            </span>
+            <br />
+            <span className="text-white">In Seconds.</span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-lg text-zinc-400 max-w-lg leading-relaxed">
+            Paste a URL and receive a complete design system, all assets, and a
+            ready-to-use React SPA — packaged as a ZIP in under 30 seconds.
+          </p>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-2.5">
+            {FEATURE_PILLS.map((f) => (
+              <span key={f} className="px-3.5 py-1.5 text-xs text-zinc-400 rounded-full bg-white/[0.04] border border-white/[0.07] hover:border-purple-500/30 hover:text-zinc-300 transition-colors duration-200">
+                ✓ {f}
+              </span>
+            ))}
+          </div>
+
+          {/* Stats row */}
+          <div className="flex items-center gap-8 pt-4 border-t border-white/[0.06]">
+            {STATS.map((s, i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <span className="font-display text-2xl font-bold bg-gradient-to-r from-purple-300 to-purple-500 bg-clip-text text-transparent">
+                  {s.value}
+                </span>
+                <span className="text-xs text-zinc-500">{s.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Stats row */}
-        <div className="flex items-center gap-6 sm:gap-12 mt-4 pt-8 border-t border-white/[0.06] w-full justify-center">
-          {STATS.map((s, i) => (
-            <div key={i} className="flex flex-col items-center gap-1">
-              <span className="font-display text-2xl font-bold bg-gradient-to-r from-purple-300 to-purple-500 bg-clip-text text-transparent">
-                {s.value}
-              </span>
-              <span className="text-xs text-zinc-500">{s.label}</span>
+        {/* RIGHT — URL input */}
+        <div className="flex-1 flex flex-col justify-center items-center px-8 md:px-16 py-16 md:py-24 gap-8">
+          <div className="w-full max-w-lg flex flex-col gap-6">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-white mb-2">Start Extracting</h2>
+              <p className="text-zinc-500 text-sm">Enter any public website URL below</p>
             </div>
-          ))}
+
+            <UrlInput />
+
+            <div className="flex flex-col gap-3 pt-2">
+              {["No account required", "Any public URL works", "ZIP delivered instantly"].map((item) => (
+                <div key={item} className="flex items-center gap-2.5">
+                  <svg className="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm text-zinc-400">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+
       </div>
     </section>
   );
