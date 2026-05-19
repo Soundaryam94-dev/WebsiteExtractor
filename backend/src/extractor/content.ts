@@ -58,7 +58,7 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
     }
 
     return { headings, paragraphs, buttons, links, navItems };
-  }) as { headings: string[]; paragraphs: string[]; buttons: string[]; links: { text: string; href: string }[]; navItems: string[] };
+  }).catch(() => ({ headings: [], paragraphs: [], buttons: [], links: [] as { text: string; href: string }[], navItems: [] })) as { headings: string[]; paragraphs: string[]; buttons: string[]; links: { text: string; href: string }[]; navItems: string[] };
 
   // ── Layer 2: Raw HTML regex fallback ──
   const htmlHeadings: string[] = [];

@@ -84,7 +84,7 @@ export async function extractColors(page: Page, html: string): Promise<ColorPale
     }
 
     return Object.entries(freq).sort((a, b) => b[1] - a[1]).map(([c]) => c);
-  });
+  }).catch(() => [] as string[]);
 
   // ── Merge ──
   const merged: Record<string, number> = { ...nodeFreq };

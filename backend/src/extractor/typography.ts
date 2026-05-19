@@ -32,7 +32,7 @@ export async function extractTypography(page: Page, html: string): Promise<Typog
     }
 
     return { headingFont, bodyFont, sizes };
-  }) as { headingFont: string; bodyFont: string; sizes: Record<string, string> };
+  }).catch(() => ({ headingFont: "", bodyFont: "", sizes: {} })) as { headingFont: string; bodyFont: string; sizes: Record<string, string> };
 
   // ── Layer 2: Parse raw HTML for font-family declarations ──
   let htmlHeadingFont = "";

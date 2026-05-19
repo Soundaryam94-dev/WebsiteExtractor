@@ -19,7 +19,7 @@ export async function extractImages(page: Page, baseUrl: string): Promise<string
       if (val && !val.startsWith("data:")) urls.push(val);
     }
     return urls;
-  });
+  }).catch(() => [] as string[]);
 
   // ── Layer 1: DOM image elements ──
   const domImages = await page.evaluate(() => {
@@ -52,7 +52,7 @@ export async function extractImages(page: Page, baseUrl: string): Promise<string
     }
 
     return Array.from(urls);
-  });
+  }).catch(() => [] as string[]);
 
   // ── Resolve all URLs ──
   const resolve = (u: string): string | null => {
