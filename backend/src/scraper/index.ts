@@ -103,13 +103,16 @@ export async function scrape(url: string): Promise<ScrapeResult> {
     const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 })
       .catch(() => page.goto(url, { waitUntil: "commit", timeout: 60_000 }))
       .catch((err: Error) => {
-        if (err.message.includes("ERR_HTTP2_PROTOCOL_ERROR")) {
+        const msg = err.message;
+        if (msg.includes("ERR_HTTP2_PROTOCOL_ERROR"))
           throw new Error("This site has an HTTP/2 compatibility issue and cannot be accessed.");
-        }
-        if (err.message.includes("ERR_NAME_NOT_RESOLVED") || err.message.includes("ERR_CONNECTION_REFUSED")) {
-          throw new Error("Could not reach the site. Please check the URL and try again.");
-        }
-        throw err;
+        if (msg.includes("ERR_NAME_NOT_RESOLVED"))
+          throw new Error("Domain not found. Please check the URL and try again.");
+        if (msg.includes("ERR_CONNECTION_REFUSED"))
+          throw new Error("Connection refused. The site may be down or blocking automated access.");
+        if (msg.includes("Timeout") || msg.includes("timeout"))
+          throw new Error("The site took too long to respond. It may be blocking automated access or is temporarily down.");
+        throw new Error(`Could not load the page: ${msg.split("\n")[0]}`);
       });
 
     // Hard block on 403/401/503
