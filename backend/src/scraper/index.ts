@@ -90,7 +90,7 @@ export async function scrape(url: string): Promise<ScrapeResult> {
       extractImages(page, url),
       extractColors(page, html),
       extractTypography(page, html),
-      extractContent(page),
+      extractContent(page, html),
     ]);
 
     return { url, title, html, images, colors, typography, content };
