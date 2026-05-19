@@ -40,9 +40,9 @@ export async function extractRoute(req: Request, res: Response): Promise<void> {
   try {
     const data = await scrape(url);
 
-    const domain = new URL(url).hostname.replace(/^www\./, "").replace(/\./g, "-");
+    const domain = new URL(url).hostname.replace(/^www\./, "").replace(/\.[^.]+$/, "");
     res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="${domain}-assets.zip"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${domain}.zip"`);
 
     await buildZip(data, res);
 
