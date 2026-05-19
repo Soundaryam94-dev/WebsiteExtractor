@@ -19,11 +19,9 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
 
   // ── Layer 1: Browser-side (live DOM) ──
   const browser = await page.evaluate(() => {
-    const clean = (t: string) => t.replace(/\s+/g, " ").trim();
-
     const headings: string[] = [];
     for (const el of Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6,[role='heading']")).slice(0, 30)) {
-      const t = clean(el.textContent ?? "");
+      const t = (el.textContent ?? "").replace(/\s+/g, " ").trim();
       if (t && t.length > 1 && t.length < 200) headings.push(t);
     }
 
@@ -31,7 +29,7 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
     for (const el of Array.from(document.querySelectorAll(
       "p,[role='paragraph'],article p,main p,.description,.content p,.subtitle,.tagline"
     )).slice(0, 40)) {
-      const t = clean(el.textContent ?? "");
+      const t = (el.textContent ?? "").replace(/\s+/g, " ").trim();
       if (t.length > 20 && t.length < 1000) paragraphs.push(t);
       if (paragraphs.length >= 20) break;
     }
@@ -40,13 +38,13 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
     for (const el of Array.from(document.querySelectorAll(
       "button,[role='button'],a.btn,.btn,.button,.cta,[class*='btn'],[class*='button'],[class*='cta']"
     )).slice(0, 20)) {
-      const t = clean(el.textContent ?? "");
+      const t = (el.textContent ?? "").replace(/\s+/g, " ").trim();
       if (t && t.length < 60) buttons.push(t);
     }
 
     const links: { text: string; href: string }[] = [];
     for (const el of Array.from(document.querySelectorAll("a[href]")).slice(0, 40)) {
-      const t = clean(el.textContent ?? "");
+      const t = (el.textContent ?? "").replace(/\s+/g, " ").trim();
       const href = (el as HTMLAnchorElement).href;
       if (t && t.length < 80) links.push({ text: t, href });
     }
@@ -55,7 +53,7 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
     for (const el of Array.from(document.querySelectorAll(
       "nav a,header a,[role='navigation'] a,[aria-label*='nav' i] a"
     )).slice(0, 15)) {
-      const t = clean(el.textContent ?? "");
+      const t = (el.textContent ?? "").replace(/\s+/g, " ").trim();
       if (t && t.length < 50) navItems.push(t);
     }
 
