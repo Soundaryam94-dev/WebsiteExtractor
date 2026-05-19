@@ -98,8 +98,10 @@ export async function scrape(url: string): Promise<ScrapeResult> {
       }
     });
 
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    await page.waitForLoadState("load", { timeout: 15_000 }).catch(() => {});
+    // Try domcontentloaded first; fall back to "commit" (first byte) for slow sites
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 })
+      .catch(() => page.goto(url, { waitUntil: "commit", timeout: 60_000 }));
+    await page.waitForLoadState("load", { timeout: 20_000 }).catch(() => {});
 
     // Give React/Vue/Angular time to hydrate
     await page.waitForTimeout(2500);
