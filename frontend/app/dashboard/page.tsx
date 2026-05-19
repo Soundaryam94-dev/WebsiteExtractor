@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import type { User } from "@supabase/supabase-js";
 
 interface Extraction {
   id: string;
@@ -41,7 +40,6 @@ function timeAgo(iso: string) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
   const [extractions, setExtractions] = useState<Extraction[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -59,26 +57,16 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) { router.replace("/login"); return; }
-      setUser(data.user);
-
-      supabase
-        .from("extractions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50)
-        .then(({ data: rows }) => {
-          setExtractions((rows as Extraction[]) ?? []);
-          setLoading(false);
-        });
-    });
-  }, [router]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-  };
+    supabase
+      .from("extractions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data: rows }) => {
+        setExtractions((rows as Extraction[]) ?? []);
+        setLoading(false);
+      });
+  }, []);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -101,29 +89,15 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-dark-950 pb-20">
-      {/* Top nav */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 bg-dark-950/80 backdrop-blur-xl border-b border-white/[0.06]">
         <Link href="/" className="font-display font-bold text-base tracking-wider">
           <span className="bg-gradient-to-r from-purple-400 to-purple-500 bg-clip-text text-transparent">
             ASSET EXTRACTOR
           </span>
         </Link>
-
-        <div className="flex items-center gap-4">
-          <span className="hidden sm:block text-sm text-zinc-500 truncate max-w-[200px]">
-            {user?.email}
-          </span>
-          <button
-            onClick={handleLogout}
-            className="h-9 px-4 rounded-full bg-white/[0.05] border border-white/[0.08] text-zinc-400 text-sm hover:text-white hover:bg-white/[0.08] transition-all"
-          >
-            Logout
-          </button>
-        </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-6 md:px-10 pt-10 flex flex-col gap-10">
-        {/* Page title */}
         <div>
           <h1 className="font-display text-3xl font-bold text-white">Dashboard</h1>
           <p className="text-zinc-400 text-sm mt-1">Your extraction history and stats.</p>
@@ -155,14 +129,11 @@ export default function DashboardPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "Total Extractions", value: total, color: "text-white" },
+            { label: "Total Extractions", value: total,     color: "text-white" },
             { label: "Completed",         value: completed, color: "text-green-400" },
             { label: "Failed",            value: failed,    color: "text-red-400" },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-6 flex flex-col gap-1"
-            >
+            <div key={s.label} className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-6 flex flex-col gap-1">
               <span className="text-xs text-zinc-500 uppercase tracking-widest">{s.label}</span>
               <span className={`text-4xl font-bold font-display ${s.color}`}>{s.value}</span>
             </div>
@@ -176,21 +147,14 @@ export default function DashboardPage() {
           {extractions.length === 0 ? (
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-16 text-center">
               <p className="text-zinc-500 text-sm">No extractions yet.</p>
-              <Link
-                href="/"
-                className="inline-block mt-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 text-white text-sm font-semibold"
-              >
+              <Link href="/" className="inline-block mt-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 text-white text-sm font-semibold">
                 Extract your first site
               </Link>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               {extractions.map((ex) => (
-                <div
-                  key={ex.id}
-                  className="rounded-2xl bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all duration-200"
-                >
-                  {/* Domain icon */}
+                <div key={ex.id} className="rounded-2xl bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all duration-200">
                   <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
                     <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -198,74 +162,41 @@ export default function DashboardPage() {
                     </svg>
                   </div>
 
-                  {/* Main info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-white font-medium text-sm truncate">{ex.title ?? getHost(ex.url)}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_STYLE[ex.status]}`}>
-                        {ex.status}
-                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_STYLE[ex.status]}`}>{ex.status}</span>
                     </div>
-                    <a
-                      href={ex.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-zinc-500 hover:text-purple-400 transition-colors truncate block mt-0.5"
-                    >
+                    <a href={ex.url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-zinc-500 hover:text-purple-400 transition-colors truncate block mt-0.5">
                       {getHost(ex.url)}
                     </a>
-
-                    {/* Meta row */}
                     <div className="flex items-center gap-4 mt-2 flex-wrap">
-                      {ex.image_count > 0 && (
-                        <span className="text-xs text-zinc-500">{ex.image_count} images</span>
-                      )}
+                      {ex.image_count > 0 && <span className="text-xs text-zinc-500">{ex.image_count} images</span>}
                       {ex.content_summary && (
                         <span className="text-xs text-zinc-500">
                           {ex.content_summary.headings} headings · {ex.content_summary.paragraphs} paragraphs
                         </span>
                       )}
-                      {/* Color swatches */}
                       {ex.colors?.all && ex.colors.all.length > 0 && (
                         <div className="flex gap-1">
                           {ex.colors.all.slice(0, 6).map((c, i) => (
-                            <div
-                              key={i}
-                              className="w-4 h-4 rounded-full border border-white/10"
-                              style={{ backgroundColor: c }}
-                              title={c}
-                            />
+                            <div key={i} className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: c }} title={c} />
                           ))}
                         </div>
                       )}
-                      {ex.error && (
-                        <span className="text-xs text-red-400 truncate max-w-[200px]">{ex.error}</span>
-                      )}
+                      {ex.error && <span className="text-xs text-red-400 truncate max-w-[200px]">{ex.error}</span>}
                     </div>
                   </div>
 
-                  {/* Right side */}
                   <div className="flex items-center gap-3 sm:flex-col sm:items-end shrink-0">
                     <span className="text-xs text-zinc-600">{timeAgo(ex.created_at)}</span>
-                    {ex.status === "completed" && (
-                      <Link
-                        href={`/dashboard/${ex.id}`}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors whitespace-nowrap"
-                      >
-                        View Details
-                      </Link>
-                    )}
-                    <Link
-                      href={`/processing?url=${encodeURIComponent(ex.url)}`}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-zinc-400 hover:text-white transition-colors whitespace-nowrap"
-                    >
+                    <Link href={`/processing?url=${encodeURIComponent(ex.url)}`}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-zinc-400 hover:text-white transition-colors whitespace-nowrap">
                       {ex.status === "failed" ? "Retry" : "Extract Again"}
                     </Link>
-                    <button
-                      onClick={() => handleDelete(ex.id)}
-                      disabled={deletingId === ex.id}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-red-500/[0.07] border border-red-500/20 text-red-400 hover:bg-red-500/15 disabled:opacity-40 transition-colors whitespace-nowrap"
-                    >
+                    <button onClick={() => handleDelete(ex.id)} disabled={deletingId === ex.id}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-red-500/[0.07] border border-red-500/20 text-red-400 hover:bg-red-500/15 disabled:opacity-40 transition-colors whitespace-nowrap">
                       {deletingId === ex.id ? "Deleting…" : "Delete"}
                     </button>
                   </div>
