@@ -501,42 +501,82 @@ ${sizes}
 }
 
 // ─────────────────────────────────────────────
-// Images/ — use browser-captured buffers, fall back to server-side download
+// Images/ — browser-captured bitmaps + server-side meta/OG downloads
 // ─────────────────────────────────────────────
 async function addImages(data: ScrapeResult, archive: archiver.Archiver): Promise<void> {
-  // Primary: images captured by the browser during page load (bypasses CDN protection)
-  if (data.capturedImages.length > 0) {
-    for (const img of data.capturedImages) {
-      archive.append(img.buffer, { name: `Images/${img.filename}` });
-    }
-    return;
+  let count = 0;
+
+  // 1. Browser-captured bitmap images (PNG/JPEG/WebP/GIF/AVIF — not SVG)
+  //    These bypass CDN hotlink protection since the browser fetched them with cookies.
+  const bitmaps = data.capturedImages.filter((img) => /\.(png|jpe?g|gif|webp|avif|ico)$/i.test(img.filename));
+  const svgs    = data.capturedImages.filter((img) => /\.svg$/i.test(img.filename));
+
+  for (const img of bitmaps) {
+    archive.append(img.buffer, { name: `Images/${img.filename}` });
+    count++;
   }
 
-  // Fallback: server-side download for simpler sites
-  let downloaded = 0;
+  // 2. Server-side download for meta/OG images (og:image, twitter:image, apple-touch-icon)
+  //    These sit at the top of data.images and are almost always accessible JPEG/PNG files.
+  //    Always attempt these regardless of what the browser captured.
+  const metaUrls = data.images.slice(0, 8);
   await Promise.allSettled(
-    data.images.map(async (url) => {
+    metaUrls.map(async (url) => {
+      if (count >= 20) return;
       try {
         const res = await axios.get<ArrayBuffer>(url, {
           responseType: "arraybuffer",
           timeout: 8_000,
           maxContentLength: 5 * 1024 * 1024,
           headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
             "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
             "Referer": new URL(url).origin,
           },
         });
-        const ext = path.extname(new URL(url).pathname).split("?")[0] || ".png";
+        const ext = (path.extname(new URL(url).pathname).split("?")[0] || ".jpg").toLowerCase();
+        if (!/\.(png|jpe?g|gif|webp|avif|svg|ico)$/.test(ext)) return;
         const slug = Math.random().toString(36).slice(2, 8);
         archive.append(Buffer.from(res.data), { name: `Images/${slug}${ext}` });
-        downloaded++;
-      } catch { /* skip */ }
+        count++;
+      } catch { /* skip inaccessible */ }
     })
   );
 
-  // Always ensure Images/ folder exists
-  if (downloaded === 0) {
+  // 3. Server-side download for remaining DOM images (if still low)
+  if (count < 5 && data.images.length > 8) {
+    await Promise.allSettled(
+      data.images.slice(8, 30).map(async (url) => {
+        if (count >= 15) return;
+        try {
+          const res = await axios.get<ArrayBuffer>(url, {
+            responseType: "arraybuffer",
+            timeout: 6_000,
+            maxContentLength: 5 * 1024 * 1024,
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+              "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+              "Referer": new URL(url).origin,
+            },
+          });
+          const ext = (path.extname(new URL(url).pathname).split("?")[0] || ".jpg").toLowerCase();
+          if (!/\.(png|jpe?g|gif|webp|avif|svg|ico)$/.test(ext)) return;
+          const slug = Math.random().toString(36).slice(2, 8);
+          archive.append(Buffer.from(res.data), { name: `Images/${slug}${ext}` });
+          count++;
+        } catch { /* skip */ }
+      })
+    );
+  }
+
+  // 4. Add SVG captures as supplementary icons (logos etc.)
+  for (const img of svgs.slice(0, 10)) {
+    archive.append(img.buffer, { name: `Images/${img.filename}` });
+    count++;
+  }
+
+  // 5. Ensure folder always has something
+  if (count === 0) {
     const note = data.images.length > 0
       ? `Images could not be downloaded (CDN protection).\n\nDetected URLs:\n${data.images.slice(0, 20).join("\n")}`
       : "No images were found on this page.";
