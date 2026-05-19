@@ -26,9 +26,54 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
   const ogSiteName    = getMeta(/property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)
                      || getMeta(/content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i);
 
-  // ── Layer 1: JSON-LD structured data — richest source for SPAs ──
+  // ── Layer 1: Framework-embedded JSON (Next.js, Nuxt, Gatsby, etc.) ──
+  // These frameworks embed ALL initial page data in the HTML before JS runs,
+  // so we get real content even when the site blocks headless browsers.
   const ldHeadings: string[] = [];
   const ldParagraphs: string[] = [];
+
+  const isNaturalText = (s: string) =>
+    s.length > 2 && s.length < 800 &&
+    !s.startsWith("http") &&
+    !s.startsWith("/") &&
+    !/^[a-z0-9_-]+$/i.test(s) &&  // not an id/slug
+    /\s/.test(s);                   // must contain at least one space
+
+  const harvestJson = (obj: unknown, depth = 0): void => {
+    if (depth > 8 || obj === null || obj === undefined) return;
+    if (typeof obj === "string") {
+      const s = decodeEntities(obj);
+      if (s.length > 2 && s.length < 200 && isNaturalText(s)) ldHeadings.push(s);
+      else if (s.length >= 200 && s.length < 800 && isNaturalText(s)) ldParagraphs.push(s);
+      return;
+    }
+    if (Array.isArray(obj)) { obj.slice(0, 30).forEach((v) => harvestJson(v, depth + 1)); return; }
+    if (typeof obj === "object") {
+      const skip = new Set(["__typename", "id", "slug", "url", "href", "src", "className",
+        "style", "key", "ref", "hash", "token", "signature", "timestamp", "version"]);
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>).slice(0, 50)) {
+        if (!skip.has(k)) harvestJson(v, depth + 1);
+      }
+    }
+  };
+
+  // Next.js: <script id="__NEXT_DATA__" type="application/json">
+  const nextDataMatch = html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (nextDataMatch) {
+    try { harvestJson(JSON.parse(nextDataMatch[1])); } catch { /* skip */ }
+  }
+
+  // Nuxt: window.__NUXT__ = {...}
+  const nuxtMatch = html.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/i);
+  if (nuxtMatch) {
+    try { harvestJson(JSON.parse(nuxtMatch[1])); } catch { /* skip */ }
+  }
+
+  // Generic: <script>window.__data__ = / window.__APP_STATE__ = / window.__STORE__ =
+  const storeMatch = html.match(/window\.__(?:data|APP_STATE|STORE|INITIAL_STATE|REDUX_STATE)__\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/i);
+  if (storeMatch) {
+    try { harvestJson(JSON.parse(storeMatch[1])); } catch { /* skip */ }
+  }
   const ldRe = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let ldm: RegExpExecArray | null;
   while ((ldm = ldRe.exec(html)) !== null) {

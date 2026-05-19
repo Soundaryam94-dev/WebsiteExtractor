@@ -151,20 +151,20 @@ export async function scrape(url: string): Promise<ScrapeResult> {
       throw new Error(`Access denied (HTTP ${status}). This site blocks automated access.`);
     }
 
-    // Wait for HTML + JS to settle (short caps — never block longer than needed)
+    // Wait for HTML + JS to settle
     await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
-    await page.waitForLoadState("load", { timeout: 10_000 }).catch(() => {});
 
-    // Give React/Vue/Angular time to hydrate
-    await page.waitForTimeout(1500);
+    // networkidle = no network activity for 500ms — ensures SPA XHR/fetch calls finish.
+    // Cap at 12s since some sites (analytics, chat widgets) poll continuously.
+    await page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => {});
 
     // Scroll to trigger lazy-loaded images
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2)).catch(() => {});
-    await page.waitForTimeout(700);
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
     await page.waitForTimeout(600);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
+    await page.waitForTimeout(500);
     await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(200);
 
     const title = await page.title().catch(() => new URL(url).hostname);
 
