@@ -37,10 +37,10 @@ export default function HeroSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-dark-950/60 via-dark-950/30 to-dark-950/80 pointer-events-none" />
 
       {/* Split layout */}
-      <div className="relative z-10 flex-1 flex flex-col md:flex-row min-h-screen pt-20">
+      <div className="relative z-10 flex-1 flex flex-col md:flex-row min-h-screen pt-16">
 
         {/* LEFT — content */}
-        <div className="flex-1 flex flex-col justify-center px-8 md:px-16 py-16 md:py-24 gap-8
+        <div className="flex-1 flex flex-col justify-center px-8 md:px-16 py-8 md:py-12 gap-8
                         md:border-r md:border-white/[0.06]">
           {/* Badge */}
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 w-fit">
