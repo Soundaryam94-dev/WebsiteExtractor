@@ -81,7 +81,7 @@ export async function extractContent(page: Page, html: string): Promise<PageCont
       "button,[role='button'],a.btn,.btn,.button,.cta,[class*='btn'],[class*='button'],[class*='cta']"
     )).slice(0, 20)) {
       const t = (el.textContent ?? "").replace(/\s+/g, " ").trim();
-      if (t && t.length < 60) buttons.push(t);
+      if (t && t.length > 1 && t.length < 60 && !/^\d+$/.test(t)) buttons.push(t);
     }
 
     const links: { text: string; href: string }[] = [];

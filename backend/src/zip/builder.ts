@@ -334,9 +334,17 @@ function generateSpaHtml(data: ScrapeResult): string {
   const { typography, colors, content, title, url } = data;
   const googleFonts = buildGoogleFontsUrl(typography.headingFont, typography.bodyFont);
 
+  // Short brand name: use hostname (e.g. "kfc") rather than full page title
+  const brandName = (() => {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, "");
+      return host.split(".")[0].toUpperCase();
+    } catch { return title.split("|")[0].trim() || title; }
+  })();
+
   const navLinks = content.navItems.length
     ? content.navItems.map((t) => `<a href="#">${esc(t)}</a>`).join("\n      ")
-    : `<a href="#">Home</a><a href="#">About</a><a href="#">Contact</a>`;
+    : "";
 
   const featureSections = content.paragraphs
     .slice(1, 7)
@@ -363,7 +371,7 @@ function generateSpaHtml(data: ScrapeResult): string {
 <body>
 
   <nav class="navbar">
-    <span class="brand">${esc(title)}</span>
+    <span class="brand">${esc(brandName)}</span>
     <div class="nav-links">${navLinks}</div>
   </nav>
 
