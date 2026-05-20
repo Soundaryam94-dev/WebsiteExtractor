@@ -52,11 +52,7 @@ export default function HeroSection() {
             <span className="text-white">In Seconds.</span>
           </h1>
 
-          {/* Subtitle */}
-          <p className="text-lg text-zinc-400 max-w-lg leading-relaxed">
-            Paste a URL and receive a complete design system, all assets, and a
-            ready-to-use React SPA — packaged as a ZIP in under 30 seconds.
-          </p>
+          
 
           {/* Feature pills */}
           <div className="flex flex-wrap gap-2.5">
