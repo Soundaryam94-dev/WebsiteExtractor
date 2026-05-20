@@ -254,45 +254,49 @@ export default function ProcessingClient() {
 
   // ── Processing ──
   const activeIndex = STEPS.findIndex((s) => steps[s.id] === "active");
-  const activeStep = STEPS[activeIndex] ?? STEPS[0];
-  const doneCount = STEPS.filter((s) => steps[s.id] === "done").length;
+  const activeStep  = STEPS[activeIndex] ?? STEPS[0];
+  const doneCount   = STEPS.filter((s) => steps[s.id] === "done").length;
 
   return (
     <main className="h-screen overflow-hidden bg-dark-950 flex flex-col items-center justify-center px-6">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-purple-500/[0.05] rounded-full blur-[140px] pointer-events-none" />
+      {/* Ambient glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-purple-600/[0.06] rounded-full blur-[160px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[300px] h-[300px] bg-violet-500/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-2xl flex flex-col gap-8">
+      <div className="relative z-10 w-full max-w-2xl flex flex-col gap-7">
 
         {/* Header */}
         <div className="text-center flex flex-col gap-3">
-          <Link href="/" className="font-display font-bold text-xl tracking-wider">
-            <span className="bg-gradient-to-r from-purple-400 to-purple-500 bg-clip-text text-transparent">
+          <Link href="/" className="font-display font-bold text-xl tracking-widest">
+            <span className="bg-gradient-to-r from-purple-300 via-purple-400 to-violet-500 bg-clip-text text-transparent">
               WEBSITE EXTRACTOR
             </span>
           </Link>
-          <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/[0.05] border border-white/[0.08] w-fit mx-auto">
-            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse shrink-0" />
-            <span className="text-xs text-zinc-400 truncate max-w-[320px]">{hostname}</span>
+          <div className="flex items-center justify-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.05] border border-white/[0.08] w-fit mx-auto">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
+            <span className="text-xs text-zinc-400 truncate max-w-[340px] font-medium">{hostname}</span>
           </div>
         </div>
 
-        {/* Main card */}
-        <div className="rounded-3xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm overflow-hidden">
+        {/* Card */}
+        <div className="rounded-3xl border border-white/[0.09] bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-md overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
 
-          {/* Horizontal stepper */}
-          <div className="px-8 pt-7 pb-6">
-            <div className="flex items-start justify-between">
+          {/* Stepper */}
+          <div className="px-7 pt-7 pb-5">
+            <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-5 font-medium">Extraction steps</p>
+            <div className="flex items-start">
               {STEPS.map((step, i) => {
                 const state = steps[step.id];
                 return (
                   <div key={step.id} className="flex items-center flex-1">
                     <div className="flex flex-col items-center gap-2 shrink-0">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 ${
+                      {/* Circle */}
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${
                         state === "done"
-                          ? "bg-green-500/15 border border-green-500/30"
+                          ? "bg-green-500/10 border border-green-500/25 shadow-[0_0_10px_rgba(34,197,94,0.15)]"
                           : state === "active"
-                          ? "bg-purple-500/15 border border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.25)]"
-                          : "bg-white/[0.04] border border-white/[0.08]"
+                          ? "bg-purple-500/15 border border-purple-400/50 shadow-[0_0_16px_rgba(168,85,247,0.35)]"
+                          : "bg-white/[0.03] border border-white/[0.07]"
                       }`}>
                         {state === "done" ? (
                           <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,21 +308,23 @@ export default function ProcessingClient() {
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                           </svg>
                         ) : (
-                          <span className="text-xs text-zinc-600 font-medium">{i + 1}</span>
+                          <span className="text-[11px] text-zinc-600 font-medium">{i + 1}</span>
                         )}
                       </div>
-                      <span className={`text-[9px] text-center leading-tight w-14 transition-colors duration-300 ${
-                        state === "done" ? "text-green-500" :
-                        state === "active" ? "text-purple-300 font-semibold" : "text-zinc-700"
+                      {/* Label */}
+                      <span className={`text-[9px] text-center leading-tight w-[52px] transition-colors duration-300 ${
+                        state === "done"   ? "text-green-400/80" :
+                        state === "active" ? "text-purple-300 font-semibold" :
+                                             "text-zinc-700"
                       }`}>
                         {step.label}
                       </span>
                     </div>
+                    {/* Connector */}
                     {i < STEPS.length - 1 && (
-                      <div className="flex-1 h-px mx-1.5 mb-5 relative overflow-hidden rounded-full">
-                        <div className="absolute inset-0 bg-white/[0.06]" />
+                      <div className="flex-1 h-px mx-1 mb-[22px] relative overflow-hidden rounded-full bg-white/[0.06]">
                         <div
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-500/50 to-green-400/30 transition-all duration-700"
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-400/60 to-green-500/30 transition-all duration-700"
                           style={{ width: state === "done" ? "100%" : "0%" }}
                         />
                       </div>
@@ -329,35 +335,41 @@ export default function ProcessingClient() {
             </div>
           </div>
 
+          {/* Divider */}
+          <div className="mx-7 h-px bg-white/[0.06]" />
+
           {/* Active step banner */}
-          <div className="mx-4 mb-4 flex items-center gap-4 px-5 py-4 rounded-2xl bg-purple-500/[0.08] border border-purple-500/20">
-            <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
-              <svg className="animate-spin w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none">
+          <div className="flex items-center gap-4 px-7 py-5">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(168,85,247,0.2)]">
+              <svg className="animate-spin w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">{activeStep.label}</p>
-              <p className="text-xs text-purple-400/70 mt-0.5">Step {doneCount + 1} of {STEPS.length}</p>
+              <p className="text-sm font-semibold text-white leading-snug">{activeStep.label}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">Step {doneCount + 1} of {STEPS.length}</p>
             </div>
-            <span className="text-xs text-purple-400 animate-pulse font-medium shrink-0">In progress</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+              <span className="text-xs text-purple-400 font-medium">In progress</span>
+            </div>
           </div>
         </div>
 
         {/* Progress */}
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-zinc-500">Overall progress</span>
-            <span className="text-purple-400 font-semibold">{progress}%</span>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-zinc-500">Overall progress</span>
+            <span className="text-xs text-purple-400 font-bold tabular-nums">{progress}%</span>
           </div>
-          <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+          <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-400 transition-all duration-700 shadow-[0_0_8px_rgba(168,85,247,0.4)]"
-              style={{ width: `${progress}%` }}
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 via-purple-400 to-purple-300 transition-all duration-700"
+              style={{ width: `${progress || 2}%` }}
             />
           </div>
-          <p className="text-center text-xs text-zinc-600">This usually takes 15–30 seconds</p>
+          <p className="text-center text-xs text-zinc-600">Usually takes 15–30 seconds</p>
         </div>
 
       </div>
