@@ -118,7 +118,7 @@ export default function ProcessingClient() {
   // ── Success ──
   if (pageStatus === "success") {
     return (
-      <main className="min-h-screen bg-dark-950 flex flex-col items-center justify-center px-6">
+      <main className="h-screen overflow-hidden bg-dark-950 flex flex-col items-center justify-center px-6">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-purple-500/[0.07] rounded-full blur-[130px] pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center text-center max-w-md gap-6">
           <div className="w-20 h-20 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center">
@@ -173,7 +173,7 @@ export default function ProcessingClient() {
   // ── Error ──
   if (pageStatus === "error") {
     return (
-      <main className="min-h-screen bg-dark-950 flex flex-col items-center justify-center px-6">
+      <main className="h-screen overflow-hidden bg-dark-950 flex flex-col items-center justify-center px-6">
         <div className="relative z-10 flex flex-col items-center text-center max-w-md gap-6">
           <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
             <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +205,7 @@ export default function ProcessingClient() {
 
   // ── Processing ──
   return (
-    <main className="min-h-screen bg-dark-950 flex flex-col items-center justify-center px-6">
+    <main className="h-screen overflow-hidden bg-dark-950 flex flex-col items-center justify-center px-6">
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-purple-500/[0.06] rounded-full blur-[130px] pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-lg flex flex-col gap-8">
