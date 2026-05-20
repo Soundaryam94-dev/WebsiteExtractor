@@ -208,11 +208,11 @@ export default function ProcessingClient() {
 
   return (
     <main className="h-screen overflow-hidden bg-dark-950 flex flex-col items-center justify-center px-6">
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-purple-500/[0.06] rounded-full blur-[130px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-purple-500/[0.06] rounded-full blur-[130px] pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-2xl flex flex-col gap-10">
+      <div className="relative z-10 w-full max-w-2xl flex flex-col gap-6">
         {/* Header */}
-        <div className="text-center flex flex-col gap-3">
+        <div className="text-center flex flex-col gap-2">
           <Link href="/" className="font-display font-bold text-lg tracking-wider">
             <span className="bg-gradient-to-r from-purple-400 to-purple-500 bg-clip-text text-transparent">
               WEBSITE EXTRACTOR
@@ -225,7 +225,7 @@ export default function ProcessingClient() {
         </div>
 
         {/* Horizontal stepper */}
-        <div className="rounded-3xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm p-8 flex flex-col gap-8">
+        <div className="rounded-3xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm p-6 flex flex-col gap-6">
           <div className="flex items-center justify-between">
             {STEPS.map((step, i) => {
               const state = steps[step.id];
