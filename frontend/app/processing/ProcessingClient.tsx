@@ -172,30 +172,79 @@ export default function ProcessingClient() {
 
   // ── Error ──
   if (pageStatus === "error") {
+    const isBot     = /bot detection|captcha|cloudflare|checking your browser/i.test(error);
+    const isAuth    = /401|403|login|auth|access denied|unauthorized/i.test(error);
+    const isTimeout = /timeout|timed out|networkidle/i.test(error);
+    const isRate    = /too many requests/i.test(error);
+
+    const errorConfig = isBot ? {
+      title: "Site Blocked Our Request",
+      summary: "This website uses bot protection (Cloudflare or reCAPTCHA) that prevents automated access.",
+      tip: "Try a different URL — most public websites work fine.",
+      canRetry: false,
+    } : isAuth ? {
+      title: "Access Denied",
+      summary: "This page requires a login or is behind a paywall.",
+      tip: "Only publicly accessible pages can be extracted.",
+      canRetry: false,
+    } : isTimeout ? {
+      title: "Page Took Too Long",
+      summary: "The website didn't finish loading in time.",
+      tip: "The site may be slow or temporarily down. Try again in a moment.",
+      canRetry: true,
+    } : isRate ? {
+      title: "Too Many Requests",
+      summary: "You've made too many extractions recently.",
+      tip: "Please wait 15 minutes before trying again.",
+      canRetry: false,
+    } : {
+      title: "Extraction Failed",
+      summary: error,
+      tip: "If this keeps happening, try a different URL.",
+      canRetry: true,
+    };
+
     return (
       <main className="h-screen overflow-hidden bg-dark-950 flex flex-col items-center justify-center px-6">
-        <div className="relative z-10 flex flex-col items-center text-center max-w-md gap-6">
-          <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-            <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-red-500/[0.04] rounded-full blur-[120px] pointer-events-none" />
+        <div className="relative z-10 flex flex-col items-center text-center max-w-md gap-6 w-full">
+
+          {/* Icon */}
+          <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <div>
-            <h1 className="font-display text-3xl font-bold text-white mb-2">Extraction Failed</h1>
-            <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 mt-3">{error}</p>
+
+          {/* Title + message */}
+          <div className="flex flex-col gap-3">
+            <h1 className="font-display text-2xl font-bold text-white">{errorConfig.title}</h1>
+            <p className="text-zinc-400 text-sm leading-relaxed">{errorConfig.summary}</p>
           </div>
+
+          {/* Tip card */}
+          <div className="w-full flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-left">
+            <svg className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-xs text-zinc-400 leading-relaxed">{errorConfig.tip}</p>
+          </div>
+
+          {/* Buttons */}
           <div className="flex gap-3 w-full">
-            <button
-              onClick={() => { setPageStatus("processing"); setError(""); window.location.reload(); }}
-              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-purple-400 to-purple-500 text-white font-semibold text-sm"
-            >
-              Try Again
-            </button>
+            {errorConfig.canRetry && (
+              <button
+                onClick={() => { setPageStatus("processing"); setError(""); window.location.reload(); }}
+                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-purple-400 to-purple-500 text-white font-semibold text-sm hover:shadow-[0_4px_20px_rgba(192,132,252,0.3)] transition-all"
+              >
+                Try Again
+              </button>
+            )}
             <Link
               href="/"
-              className="flex-1 h-12 flex items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.08] text-zinc-300 text-sm"
+              className={`${errorConfig.canRetry ? "flex-1" : "w-full"} h-11 flex items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.08] text-zinc-300 text-sm hover:bg-white/[0.08] transition-all`}
             >
-              Go Back
+              Try a Different URL
             </Link>
           </div>
         </div>
