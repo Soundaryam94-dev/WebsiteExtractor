@@ -213,7 +213,7 @@ export default function ProcessingClient() {
         <div className="text-center">
           <Link href="/" className="font-display font-bold text-lg tracking-wider">
             <span className="bg-gradient-to-r from-purple-400 to-purple-500 bg-clip-text text-transparent">
-              ASSET EXTRACTOR
+              WEBSITE EXTRACTOR
             </span>
           </Link>
           <div className="mt-4 flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/[0.05] border border-white/[0.08] w-fit mx-auto">

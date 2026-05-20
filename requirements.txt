@@ -1,4 +1,4 @@
-Asset Extractor — Website to ZIP Generator
+WEBSITE EXTRACTOR — Website to ZIP Generator
 Complete Requirements Document
 Last Updated: May 2026
 
@@ -7,7 +7,7 @@ Last Updated: May 2026
 ================================================================================
 
 Project Name
-  Asset Extractor
+  WEBSITE EXTRACTOR
 
 Goal
   User pastes any public website URL. The system launches a real headless browser,

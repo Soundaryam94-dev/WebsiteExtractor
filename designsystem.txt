@@ -1,4 +1,4 @@
-Asset Extractor — Design System
+WEBSITE EXTRACTOR — Design System
 ================================================================================
 Dark glassmorphism SaaS UI. Every value in this document is taken directly
 from the source code — not aspirational or placeholder.
@@ -7,7 +7,7 @@ from the source code — not aspirational or placeholder.
 1. BRAND IDENTITY
 ================================================================================
 
-Product Name : ASSET EXTRACTOR
+Product Name : WEBSITE EXTRACTOR
 Style        : Dark premium SaaS, glassmorphism, minimal
 Tone         : Developer-focused, high-tech, AI-powered
 

@@ -1,4 +1,4 @@
-Asset Extractor — Technology Stack
+WEBSITE EXTRACTOR — Technology Stack
 ================================================================================
 
 FRONTEND

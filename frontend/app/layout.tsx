@@ -14,7 +14,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Asset Extractor — Extract Any Website",
+  title: "WEBSITE EXTRACTOR — Extract Any Website",
   description:
     "Paste a URL and get a complete design system, assets, and React SPA in one click.",
 };
