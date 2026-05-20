@@ -15,7 +15,7 @@ const STATS = [
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex flex-col overflow-hidden">
+    <section className="relative h-screen flex flex-col overflow-hidden">
       {/* Prism background */}
       <div className="absolute inset-0 pointer-events-none opacity-40">
         <Prism
@@ -37,7 +37,7 @@ export default function HeroSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-dark-950/60 via-dark-950/30 to-dark-950/80 pointer-events-none" />
 
       {/* Split layout */}
-      <div className="relative z-10 flex-1 flex flex-col md:flex-row min-h-screen pt-16">
+      <div className="relative z-10 flex-1 flex flex-col md:flex-row pt-16">
 
         {/* LEFT — content */}
         <div className="flex-1 flex flex-col justify-center px-8 md:px-16 py-8 md:py-12 gap-8
