@@ -1,10 +1,81 @@
-This document explains the complete technology stack used for building the creator collaboration platform. it includes
-frontend:Next.js
-backend:Supabase
-deployment:vercel
-version control:github
+Asset Extractor — Technology Stack
+================================================================================
 
-Styling:Tailwind CSS
-Backend:Node.js
-Scraping:Playwright
-ZIP Generation:Archiver
+FRONTEND
+--------
+Framework    : Next.js 16
+UI Library   : React 19
+Styling      : Tailwind CSS 4 + @tailwindcss/postcss
+Language     : TypeScript
+WebGL        : ogl (background animation — Prism component)
+Runtime      : Node.js (Next.js dev server)
+
+BACKEND
+-------
+Runtime      : Node.js
+Framework    : Express.js
+Language     : TypeScript (module: Node16 / moduleResolution: node16)
+Dev server   : tsx (hot reload)
+Browser      : Playwright (headless Chromium)
+HTTP client  : axios (image downloading with real browser User-Agent)
+ZIP          : archiver (streamed directly to HTTP response — no temp files)
+Images       : sharp (WebP / AVIF / GIF / ICO → PNG conversion)
+Validation   : zod (URL + request body validation)
+Rate limit   : express-rate-limit (10 req / 15 min per IP)
+CORS         : cors
+
+BROWSER AUTOMATION
+------------------
+Engine       : Playwright (Chromium)
+Strategy     : waitUntil "commit" → domcontentloaded → networkidle (12s cap)
+               → scroll bottom-to-top (lazy image trigger)
+               → bot detection check (Cloudflare / CAPTCHA title)
+Extractors   : colors, images, typography, content (run in parallel)
+
+IMAGE PROCESSING
+----------------
+Format conv. : sharp — WebP / AVIF / GIF / ICO converted to PNG
+SVG          : saved as-is
+Download     : axios with real browser User-Agent headers
+Fallback     : image-urls.txt if all downloads fail (CDN protection)
+Max images   : 30 per extraction
+Max file size: 5 MB per image
+
+ZIP PACKAGING
+-------------
+Library      : archiver (streaming, no disk I/O for temp files)
+Output       : {domain}.zip streamed directly as application/zip response
+Structure    :
+  Images/
+    Logo/          SVG preferred
+    Hero/          PNG / JPEG
+    Product/       PNG / JPEG
+    Illustrations/ PNG / JPEG
+    Icons/         SVG or PNG
+    Background/    PNG / JPEG
+    Thumbnails/    PNG / JPEG
+    (other)        PNG / JPEG
+  Colour Palette/
+    palette.json + palette.html
+  Typography/
+    typography.json + typography.html (6 sections)
+  Content/
+    content.json + content.html
+  Design System/
+    index.html + design-system.json + styles.css
+  README.md
+
+DEPLOYMENT
+----------
+Version control : GitHub
+Frontend        : Vercel (Next.js — one-command deploy)
+Backend         : Railway / Render / Fly.io (needs persistent process for Playwright)
+
+ENVIRONMENT VARIABLES
+---------------------
+Backend (.env):
+  PORT         = 4000
+  FRONTEND_URL = http://localhost:3000
+
+Frontend (.env.local):
+  NEXT_PUBLIC_API_URL = http://localhost:4000

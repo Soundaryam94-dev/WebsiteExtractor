@@ -12,14 +12,16 @@ export default function UrlInput() {
     const trimmed = url.trim();
     if (!trimmed) return;
 
+    const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
     try {
-      new URL(trimmed);
+      new URL(normalized);
     } catch {
-      setError("Please enter a valid URL including https://");
+      setError("Please enter a valid URL (e.g. example.com or https://example.com)");
       return;
     }
 
-    router.push(`/processing?url=${encodeURIComponent(trimmed)}`);
+    router.push(`/processing?url=${encodeURIComponent(normalized)}`);
   };
 
   return (

@@ -1,658 +1,384 @@
-Website URL to Single Page Application ZIP Generator
-
+Asset Extractor — Website to ZIP Generator
 Complete Requirements Document
+Last Updated: May 2026
 
----
-
-1. Project Overview
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
 
 Project Name
-
-Website Extractor(Single Page Aplication)
+  Asset Extractor
 
 Goal
-
-The User pastes a website URL.
-
-System automatically:
-
-The Website gets analyzed.
-
-The Content gets extracted.
-
-The Images gets downloaded.
-
-The Color palette gets detected.
-
-The Typography gets detected.
-
-The Single Page Application gets generated.
-
-The ZIP file gets created
-
-Final:
-
-website-assets.zip
-
-It should be downloaded by user.
-
----
-
-1. Main Workflow
-
-User Input URL
-↓
-Frontend API Request
-↓
-Backend Receives URL
-↓
-Playwright Opens Website
-↓
-Website Fully Render
-↓
-Extract:
-
-- Images
-- Colors
-- Typography
-- Content
-- HTML
-↓
-Generate Design System
-↓
-Create Single Page Application Structure
-↓
-Generate ZIP File
-↓
-Send ZIP to Frontend
-↓
-User Downloads ZIP
-
----
-
-1. Functional Requirements
-
-3.1 URL Input Module
-
-Features:
-
-URL input field
-
-Validate URL
-
-Extract button
-
-Error handling
-
-Loading state
-
----
-
-3.2 Website Scraping Module
-
-Responsibilities
-
-Open website
-
-Wait for rendering
-
-Execute JS
-
-Read DOM
-
-Extract assets
-
-Technology
-
-Playwright
-
-Extract:
-
-HTML
-
-Images
-
-Typography
-
-Colors
-
-Text content
-
-Buttons
-
-Navigation
-
----
-
-3.3 Image Extraction Module
-
-Must Extract
-
-img tags
-
-SVGs
-
-background images
-
-icons
-
-logos
-
-Output
-
-/assets/images/
-
----
-
-3.4 Typography Extraction Module
-
-Detect
-
-font-family
-
-font-size
-
-font-weight
-
-line-height
-
-letter-spacing
-
-Example Output
-
-{
-"headingFont": "Poppins",
-"bodyFont": "Inter"
-}
-
----
-
-3.5 Color Palette Module
-
-Detect
-
-Primary color
-
-Secondary color
-
-Accent colors
-
-Background colors
-
-Border colors
-
-Remove
-
-Duplicate colors
-
-Transparent colors
-
-Example Output
-
-{
-"primary": "#2563EB",
-"secondary": "#0F172A",
-"accent": "#F97316"
-}
-
----
-
-3.6 Content Extraction Module
-
-Extract
-
-H1-H6 headings
-
-Paragraphs
-
-Buttons
-
-Links
-
-Lists
-
-Footer text
-
-Store
-
-content.json
-
----
-
----
-
-3.7 SPA Generator Module
-
-Generate
-
-Navbar
-
-Hero section
-
-Features section
-
-Testimonials
-
-CTA section
-
-Footer
-
-Framework
-
-React / Next.js
-
----
-
-3.8 ZIP Generator Module
-
-ZIP Must Contain
-
-project/
-│
-├── assets/
-├── content.json
-├── design-system.json
-├── index.html
-├── package.json
-└── [README.md](http://readme.md/)
-
----
-
-1. Non-Functional Requirements
-
-Performance
-
-Extraction under 30 seconds
-
-Parallel image downloads
-
-Optimized memory usage
-
-Security
-
-URL validation
-
-Prevent malicious URLs
-
-Timeout protection
-
-Rate limiting
-
-Scalability
-
-Queue support
-
-Async processing
-
-Multi-user support
-
-Reliability
-
-Retry failed downloads
-
-Handle invalid websites
-
-Error logging
-
----
-
-1. Frontend Requirements
-
-Framework
-
-Next.js
-
-Styling
-
-Tailwind CSS
-
-State Management
-
-Zustand or Context API
-
-Features
-
-URL input
-
-Loading spinner
-
-Progress bar
-
-Preview screen
-
-Download button
-
-Error popup
-
----
-
-1. Backend Requirements
-
-Runtime
-
-Node.js
-
-Framework
-
-Express.js
-
-Responsibilities
-
-API handling
-
-Scraping
-
-Asset download
-
-ZIP generation
-
-File streaming
-
----
-
-1. Scraping Requirements
-
-Browser Automation
-
-Playwright
-
-Why?
-
-React support
-
-Dynamic rendering
-
-Full browser rendering
-
-Better stability
-
-Browser Features
-
-Headless mode
-
-Screenshot support
-
-Auto waiting
-
-JS execution
-
----
-
-1. Database Requirements
-
-Database
-
-Supabase
-
-Store
-
-User data
-
-Project history
-
-Generated metadata
-
-Extraction logs
-
----
-
-1. API Requirements
-
-Main Endpoint
-
-POST /api/extract
-
-Request Example
-
-{
-"url": "[https://example.com](https://example.com/)"
-}
-
-Response Example
-
-{
-"success": true,
-"downloadUrl": "/downloads/project.zip"
-}
-
----
-
-1. Folder Structure
-
-project/
+  User pastes any public website URL. The system launches a real headless browser,
+  fully renders the page, extracts all design assets and content, then packages
+  everything into a structured ZIP file that downloads automatically.
+
+Tech Stack
+  Frontend  : Next.js 16 + React 19 + Tailwind CSS 4
+  Backend   : Node.js + Express.js + TypeScript
+  Browser   : Playwright (headless Chromium)
+  Images    : sharp (format conversion)
+  Packaging : archiver (ZIP streaming)
+
+================================================================================
+2. COMPLETE WORKFLOW
+================================================================================
+
+User enters URL (with or without https://)
+  ↓
+Frontend normalizes URL → adds https:// if missing → validates with new URL()
+  ↓
+POST /api/extract { url }
+  ↓
+Backend validates URL (Zod) → blocks private IPs
+  ↓
+Playwright launches headless Chromium
+  ↓
+page.goto(url, waitUntil: "commit")
+  ↓
+waitForLoadState("domcontentloaded")
+  ↓
+waitForLoadState("networkidle")  ← ensures fonts/CSS/JS fully loaded
+  ↓
+Scroll page bottom → top  ← triggers lazy-loaded images
+  ↓
+Bot detection check (Cloudflare, CAPTCHA titles → throw error)
+  ↓
+4 extractors run in parallel:
+  ├── extractImages()    → CategorizedImage[]
+  ├── extractColors()    → ColorPalette
+  ├── extractTypography()→ Typography
+  └── extractContent()   → PageContent
+  ↓
+buildZip() streams directly to Express response (no temp file)
+  ↓
+ZIP auto-downloads in browser
+
+================================================================================
+3. FUNCTIONAL REQUIREMENTS
+================================================================================
+
+3.1 URL Input
+--------------
+- Input field accepts URL with or without https:// prefix
+- Auto-prepends https:// if no protocol is present
+- Validates using native URL() constructor
+- Error shown inline (not popup) for invalid URLs
+- Enter key or button click both trigger extraction
+- Button disabled while input is empty
+
+3.2 Processing Page
+-------------------
+- Animated step-by-step progress display (7 steps, 3.5s each)
+- Steps: Opening website → Extracting images → Detecting color palette →
+         Analyzing typography → Extracting content → Generating React SPA →
+         Building ZIP file
+- Single API call protected by AbortController (prevents double-download)
+- Progress bar 0→100%
+- On success: ZIP auto-downloads, success screen shown
+- On error: error message shown with retry button
+
+3.3 Image Extraction
+---------------------
+Sources discovered:
+  - og:image, twitter:image meta tags        → category: hero
+  - apple-touch-icon, link[rel=icon]         → category: logo
+  - <img> src, data-src, srcset attributes   → classified by URL pattern
+  - CSS background-image                     → category: background
+  - SVG <image> elements                     → classified by URL pattern
+
+URL pattern classification:
+  logo         : URL contains logo, brand, wordmark, logotype
+  hero         : URL contains hero, banner, cover, masthead, splash
+  icon         : URL contains icon, sprite, favicon  OR  .svg extension
+  thumbnail    : URL contains thumb, thumbnail, preview
+  background   : URL contains bg-, background, backdrop, pattern, texture
+  illustration : URL contains illustration, drawing, artwork
+  product      : URL contains product, item, catalog
+  other        : everything else
+
+Download strategy:
+  - Browser-captured images (intercepted during page load, have buffers) → written directly
+  - URL-discovered images → downloaded via axios with real browser User-Agent headers
+  - Format conversion: WebP / AVIF / GIF / ICO → PNG via sharp
+  - SVG files saved as-is (.svg)
+  - Max 30 images total
+
+ZIP output folders:
+  Images/Logo/
+  Images/Hero/
+  Images/Product/
+  Images/Illustrations/
+  Images/Icons/
+  Images/Background/
+  Images/Thumbnails/
+  Images/          ← remaining/other
+
+3.4 Color Palette Extraction
+------------------------------
+Three-layer extraction with frequency weighting:
+
+  Layer 0 — Meta tags (most reliable):
+    theme-color meta tag         weight: 50
+    msapplication-TileColor      weight: 30
+
+  Layer 1 — Raw HTML regex:
+    Hex colors (#RGB, #RRGGBB)   weight: 5
+    rgb() / rgba() values        weight: 5
+
+  Layer 2 — Live browser execution:
+    CSS custom properties (--primary, --color-brand, etc.)  weight: 40
+    Body background-color (dedicated)                       weight: 25
+    nav / header computed colors                            weight: 15
+    button / [role=button] colors                           weight: 12
+    brand/primary/hero class elements                       weight: 10
+    anchor link colors                                      weight: 6
+    footer colors                                           weight: 8
+    General elements                                        weight: 1
+
+Classification:
+  - isNeutral: HSL saturation < 0.1
+  - isLight:   perceptual luminance (0.299R + 0.587G + 0.114B) > 200
+  - primary    = first vivid color
+  - secondary  = second vivid color
+  - accent     = third vivid color (falls back to primary)
+  - background = first light neutral (falls back to white)
+
+Output:
+  {
+    "primary":    "#e23744",
+    "secondary":  "#1c1c1c",
+    "accent":     "#e23744",
+    "background": "#ffffff",
+    "all":        ["#e23744", "#1c1c1c", ... ]  (up to 24 colors)
+  }
+
+3.5 Typography Extraction
+---------------------------
+Four-layer extraction with priority merge:
+
+  Priority 1 — Browser @font-face rules (highest confidence, custom brand fonts)
+  Priority 2 — Browser computed styles: getComputedStyle(h1/h2/p/button...).fontFamily
+  Priority 3 — <style> tag @font-face declarations (never scans <script> content)
+  Priority 4 — Google Fonts <link> href regex
+  Priority 5 — font-family declarations in <style> blocks, frequency-ranked
+
+Roles extracted:
+  headingFont  : from h1 → h2 → h3 → h4 → header → nav
+  bodyFont     : from p → body → main → article
+  buttonFont   : from button → [role=button] → .btn
+  captionFont  : from small → figcaption → caption → label
+
+Sizes extracted:
+  h1, h2, h3, h4 — heading scale
+  p              — body text
+  button         — CTA/button text
+  caption        — small/caption text
+  nav            — navigation links
+  + any other detected elements
+
+Output:
+  {
+    "headingFont": "Okra",
+    "bodyFont":    "Okra",
+    "buttonFont":  "Okra",
+    "captionFont": "Okra",
+    "sizes": {
+      "h1": "26px", "h2": "1.5rem", "h3": "1.25rem",
+      "p": "16px", "button": "15px", "caption": "12px"
+    }
+  }
+
+ZIP HTML file — 6 numbered sections:
+  1. Primary Brand Font   (hero display of brand typeface)
+  2. Heading Typography   (h1–h4 specimen + size table)
+  3. Body Typography      (paragraph specimen + size table)
+  4. Button / Accent      (live button previews + size table)
+  5. Caption / Small Text (caption demos + size table)
+  6. Remaining Styles     (nav, label, etc. — hidden if empty)
+
+3.6 Content Extraction
+------------------------
+Extracted from live DOM:
+  - Headings (h1–h4)
+  - Paragraphs (body text)
+  - Button labels / CTAs
+  - Navigation items
+  - Links (text + href)
+
+Output: content.json + content.html
+
+3.7 ZIP Generation
+-------------------
+Streamed directly to HTTP response using archiver (no temp files on disk).
+
+ZIP structure:
+  {domain}.zip
+  ├── Images/
+  │   ├── Logo/          ← SVG format preferred
+  │   ├── Hero/          ← PNG / JPEG
+  │   ├── Product/       ← PNG / JPEG
+  │   ├── Illustrations/ ← PNG / JPEG
+  │   ├── Icons/         ← SVG or PNG
+  │   ├── Background/    ← PNG / JPEG
+  │   ├── Thumbnails/    ← PNG / JPEG
+  │   └── (other)        ← PNG / JPEG
+  ├── Colour Palette/
+  │   ├── palette.json
+  │   └── palette.html
+  ├── Typography/
+  │   ├── typography.json
+  │   └── typography.html
+  ├── Content/
+  │   ├── content.json
+  │   └── content.html
+  ├── Design System/
+  │   ├── design-system.json
+  │   ├── index.html     ← full SPA preview with real brand fonts + colors
+  │   └── styles.css     ← CSS variables (--color-primary, --font-heading, etc.)
+  └── README.md
+
+================================================================================
+4. BACKEND REQUIREMENTS
+================================================================================
+
+Runtime    : Node.js
+Framework  : Express.js
+Language   : TypeScript (module: Node16)
+
+API Endpoints:
+  POST /api/extract
+    Body:     { "url": "https://example.com" }
+    Response: application/zip streamed directly
+    Rate limit: 10 requests per 15 minutes per IP
+
+  GET  /health  → server health check
+
+Security:
+  - URL validated with Zod (z.string().url())
+  - Blocked hosts: localhost, 127.0.0.1, 0.0.0.0, 169.254.x, 10.x, 192.168.x, 172.x
+  - Bot protection detection (Cloudflare / CAPTCHA titles)
+  - HTTP 401/403 responses from target site → error thrown
+  - express-rate-limit on extraction endpoint
+
+NPM packages:
+  express, cors, dotenv, express-rate-limit  ← server
+  playwright                                  ← browser automation
+  axios                                       ← image downloading
+  archiver                                    ← ZIP streaming
+  sharp                                       ← image format conversion
+  zod                                         ← request validation
+  tsx                                         ← dev server with hot reload
+
+================================================================================
+5. FRONTEND REQUIREMENTS
+================================================================================
+
+Framework  : Next.js 16
+UI Library : React 19
+Styling    : Tailwind CSS 4
+Language   : TypeScript
+
+Pages:
+  /           → Landing page (URL input + hero)
+  /processing → Animated extraction progress + auto-download
+
+Components:
+  UrlInput.tsx         → URL field + normalize + validate + submit
+  ProcessingClient.tsx → Step animation + single API call + ZIP download
+  Navbar.tsx           → Site navigation
+  HeroSection.tsx      → Landing page hero with UrlInput
+
+NPM packages:
+  next, react, react-dom            ← framework
+  tailwindcss, @tailwindcss/postcss ← styling
+  ogl                               ← WebGL background animation
+  typescript, eslint                ← dev tooling
+
+================================================================================
+6. ENVIRONMENT VARIABLES
+================================================================================
+
+Backend (.env):
+  PORT=4000
+  FRONTEND_URL=http://localhost:3000
+
+Frontend (.env.local):
+  NEXT_PUBLIC_API_URL=http://localhost:4000
+
+================================================================================
+7. ACTUAL PROJECT FOLDER STRUCTURE
+================================================================================
+
+WebsiteExtractor/
+├── backend/
+│   ├── src/
+│   │   ├── api/
+│   │   │   └── extract.ts       ← POST /api/extract handler
+│   │   ├── extractor/
+│   │   │   ├── colors.ts        ← color palette extraction
+│   │   │   ├── content.ts       ← text content extraction
+│   │   │   ├── images.ts        ← image URL discovery + categorization
+│   │   │   └── typography.ts    ← font detection
+│   │   ├── scraper/
+│   │   │   └── index.ts         ← Playwright orchestration + interfaces
+│   │   ├── zip/
+│   │   │   └── builder.ts       ← ZIP assembly + HTML/JSON generators
+│   │   └── server.ts            ← Express app + routes
+│   ├── .env.example
+│   ├── package.json
+│   └── tsconfig.json
 │
 ├── frontend/
 │   ├── app/
+│   │   ├── processing/
+│   │   │   ├── page.tsx
+│   │   │   └── ProcessingClient.tsx
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx             ← landing page
 │   ├── components/
-│   ├── lib/
-│   └── styles/
+│   │   ├── HeroSection.tsx
+│   │   ├── Navbar.tsx
+│   │   ├── Prism.tsx            ← WebGL background
+│   │   └── UrlInput.tsx
+│   ├── next.config.ts
+│   └── package.json
 │
-├── backend/
-│   ├── scraper/
-│   ├── extractor/
-│   ├── zip/
-│   └── api/
-│
-├── generated/
-│
-└── assets/
-
----
-
-1. Required NPM Packages
-
-Frontend
-
-npm install next react react-dom
-npm install tailwindcss
-npm install axios
-npm install zustand
-npm install framer-motion
-
----
-
-Backend
-
-npm install express
-npm install playwright
-npm install axios
-npm install archiver
-npm install jszip
-npm install cors
-npm install dotenv
-npm install multer
-
----
-
-1. Development Phases
-
-Phase 1
-
-Basic URL extraction
-
-Build
-
-URL input
-
-API call
-
-Playwright open page
-
-Extract title
-
----
-
-Phase 2
-
-Asset extraction
-
-Build
-
-Images
-
-Colors
-
-Fonts
-
-Content
-
----
-
-Phase 3
-
-Design system
-
-Build
-
-Palette generation
-
-Typography generation
-
-JSON output
-
----
-
-Phase 4
-
-SPA generation
-
-Build
-
-React components
-
-Tailwind styles
-
-Layout generation
-
----
-
-Phase 5
-
-ZIP export
-
-Build
-
-ZIP streaming
-
-Download support
-
----
-
-1. Sample Pages
-
-Landing Page
-
-Contains
-
-URL input
-
-CTA button
-
-Demo section
-
-Feature cards
-
----
-
-Processing Page
-
-Shows
-
-Extracting Images...
-Detecting Typography...
-Generating ZIP...
-
----
-
-Results Dashboard
-
-Shows
-
-Images
-
-Palette
-
-Typography
-
-Extracted content
-
-Download button
-
----
-
-1. Challenges
-
-Dynamic Websites
-
-React sites render late.
-
-Solution
-
-Playwright rendering.
-
----
-
-Scraping Protection
-
-Some sites block bots.
-
-Solution
-
-Stealth mode
-
-Proxies
-
-Delays
-
----
-
-Large Websites
-
-Too many assets.
-
-Solution
-
-Asset limits
-
-Compression
-
-Lazy loading
-
----
-
-1. Future Features
-
-AI Features
-
-AI redesign
-
-Dark mode generation
-
-Figma export
-
-Mobile app conversion
-
-SEO optimization
-
----
-
----
-
-1. Final Output Example
-
-User Input
-
-[https://startup.com](https://startup.com/)
-
-System Generates
-
-✔️ Images Folder
-✔️ Color Palette
-✔️ Typography System
-✔️ Content JSON
-✔️ React SPA
-✔️ ZIP Download
-
-Final Download
-
-startup-assets.zip
+├── render.yaml
+├── designsystem.txt
+├── techstack.txt
+└── requirements.txt             ← this file
+
+================================================================================
+8. NON-FUNCTIONAL REQUIREMENTS
+================================================================================
+
+Performance:
+  - Extraction target: under 30 seconds
+  - networkidle timeout capped at 12s (prevents infinite wait on polling sites)
+  - Image downloads run in parallel (Promise.allSettled)
+  - ZIP streamed directly — no disk I/O for temp files
+
+Security:
+  - Private IP ranges blocked server-side
+  - Rate limiting: 10 extractions per IP per 15 minutes
+  - URL normalized and validated before any processing
+
+Reliability:
+  - Per-image download timeouts (8s meta images, 6s DOM images)
+  - Max image size 5MB per file
+  - Bot-protected sites detected by page title → clear error message
+  - HTTP 401/403 from target → specific error thrown
+  - image-urls.txt fallback if all downloads fail (CDN protection)
+
+================================================================================
+9. KNOWN LIMITATIONS
+================================================================================
+
+- Sites behind Cloudflare or aggressive bot detection cannot be extracted
+- Custom fonts not on Google Fonts and not declared via @font-face may not be detected
+- Images served exclusively as WebP are converted to PNG (quality preserved)
+- JavaScript-only rendered content (e.g. infinite scroll) only partially captured
+- Authenticated/paywalled pages cannot be accessed

@@ -25,7 +25,7 @@ export default function ProcessingClient() {
   const [steps, setSteps] = useState<Record<string, StepState>>(
     Object.fromEntries(STEPS.map((s) => [s.id, "pending"]))
   );
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [, setActiveIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [pageStatus, setPageStatus] = useState<PageStatus>("processing");
   const [error, setError] = useState("");
@@ -60,11 +60,14 @@ export default function ProcessingClient() {
       );
     });
 
-    // ── API call ──
+    // ── API call — AbortController ensures only one fetch completes ──
+    const controller = new AbortController();
+
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/extract`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
+      signal: controller.signal,
     })
       .then(async (res) => {
         if (!res.ok) {
@@ -77,14 +80,12 @@ export default function ProcessingClient() {
         apiDoneRef.current = true;
         timers.forEach(clearTimeout);
 
-        // Snap all steps to done
         setSteps(Object.fromEntries(STEPS.map((s) => [s.id, "done"])));
         setProgress(100);
 
         const href = URL.createObjectURL(blob);
         blobUrlRef.current = href;
 
-        // Auto-download with domain-based filename
         const zipName = (() => {
           try { return new URL(url).hostname.replace(/^www\./, "").replace(/\.[^.]+$/, "") + ".zip"; }
           catch { return "website.zip"; }
@@ -97,13 +98,17 @@ export default function ProcessingClient() {
         setPageStatus("success");
       })
       .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         apiDoneRef.current = true;
         timers.forEach(clearTimeout);
         setError(err instanceof Error ? err.message : "Extraction failed");
         setPageStatus("error");
       });
 
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      controller.abort();
+    };
   }, [url, router]);
 
   const hostname = (() => {

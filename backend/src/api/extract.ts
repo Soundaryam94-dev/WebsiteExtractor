@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { scrape } from "../scraper";
 import { buildZip } from "../zip/builder";
-import { createExtraction, completeExtraction, failExtraction } from "../db/extractions";
 
 const bodySchema = z.object({
   url: z.string().url({ message: "A valid URL is required" }),
@@ -20,6 +19,10 @@ function isBlockedUrl(url: string): boolean {
 }
 
 export async function extractRoute(req: Request, res: Response): Promise<void> {
+  if (typeof req.body.url === "string" && !/^https?:\/\//i.test(req.body.url.trim())) {
+    req.body.url = `https://${req.body.url.trim()}`;
+  }
+
   const parsed = bodySchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -34,9 +37,6 @@ export async function extractRoute(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Create a pending record in Supabase
-  const extractionId = await createExtraction(url);
-
   try {
     const data = await scrape(url);
 
@@ -45,13 +45,8 @@ export async function extractRoute(req: Request, res: Response): Promise<void> {
     res.setHeader("Content-Disposition", `attachment; filename="${domain}.zip"`);
 
     await buildZip(data, res);
-
-    // Log success — fire-and-forget, don't block the response
-    completeExtraction(extractionId, data).catch(console.error);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Extraction failed";
-
-    failExtraction(extractionId, message).catch(console.error);
 
     if (!res.headersSent) {
       res.status(500).json({ success: false, error: message });

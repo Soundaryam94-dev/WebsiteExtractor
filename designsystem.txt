@@ -1,213 +1,263 @@
-Overview
-Asset Extractor is a modern dark-themed SaaS UI design system focused on:
-website asset extraction
-automation
-AI workflow interfaces
-productivity tools
-Design Style:
-Futuristic
-Minimal
-Glassmorphism
-AI-inspired
-Neon glow UI
-Dark premium interface
-2. Brand Identity
-Product Name
-ASSET EXTRACTOR
-Brand Style
-Modern SaaS
-Cyber UI
-AI productivity
-Developer-focused
-High-tech aesthetic
-3. Color System
-Primary Gradient
-Purple Glow:
-#C084FC
-Soft Purple:
-#A855F7
-Gradient:
-linear-gradient(90deg, #C084FC 0%, #A855F7 100%)
-Background Colors
-Primary Background:
-#0B1020
-Deep Dark:
-#151B35
-Surface:
-#111827
-Glass Surface:
-rgba(255,255,255,0.05)
-Text Colors
-Primary Text:
-#FFFFFF
-Secondary Text:
-#A1A1AA
-Muted Text:
-#64748B
-Placeholder Text:
-#94A3B8
-Border Colors
-Glass Border:
-rgba(255,255,255,0.08)
-Focus Border:
-#C084FC
-4. Typography System
-Font Family
-Primary Font:
-Inter
-Secondary Font:
-Poppins
-Fallback:
-sans-serif
-Heading Styles
-Hero Heading:
-64px / Bold / Tight spacing
-Heading 1:
-48px / Bold
-Heading 2:
-32px / SemiBold
-Heading 3:
-24px / Medium
-Body Typography
-Large Body:
-18px / Regular
-Body:
-16px / Regular
-Small:
-14px / Regular
-Caption:
-12px / Medium
-5. Hero Section Design
-Layout
-Centered content layout.
-Contains:
-Logo
-Navbar
-Main heading
-Description
-URL Input
-CTA Button
-Hero Style
-Features:
-Gradient heading
-Large typography
-Soft glowing background
-Floating icons
-Glass input field
-6. Input Component
-URL Input Field
-Placeholder:
-Enter website URL...
-Features:
-Rounded pill design
-Glass effect
-Glow border
-Search icon
-Soft shadows
-Height:
-64px
-Radius:
-999px
-7. CTA Button System
-Primary CTA
-Text:
-EXTRACT ASSETS
-Style:
-Gradient background
-Glow effect
-Rounded full button
-White text
-Button States
-Default:
-Gradient purple
-Hover:
-Brighter glow
-Active:
-Pressed scale
-Disabled:
-Low opacity
-8. Navbar System
-Navbar Links
-Features
-Pricing
-API
-Login
-Navbar Style
-Features:
-Transparent navbar
-Minimal links
-Glow signup button
-Fixed spacing
-9. Glassmorphism System
-Glass Effect
-Background:
-rgba(255,255,255,0.05)
-Blur:
-backdrop-filter: blur(20px)
-Border:
-1px solid rgba(255,255,255,0.08)
-10. Shadow System
-Soft Glow:
-0 4px 20px rgba(192,132,252,0.10)
-Medium Glow:
-0 8px 30px rgba(192,132,252,0.15)
-Large Glow:
-0 20px 50px rgba(192,132,252,0.20)
-11. Layout System
-Container Width
-1280px
-Grid System
-12-column responsive grid
-Section Spacing
-Top/Bottom:
-120px
-Card Gap:
-24px
-12. Icon System
-Icon Style
-Features:
-Minimal
-Outline icons
-Purple glow
-Soft opacity
-Size:
-20px - 24px
-13. Animation System
-Transition
-0.3s ease-in-out
-Hover Effects
-Glow increase
-Scale animation
-Gradient movement
-Border highlight
-14. UI Mood & Feel
-Keywords:
-AI
-Automation
-Futuristic
-Premium SaaS
-Dark Mode
-Cyber UI
-Modern
-Developer Friendly
-15. Responsive Design
-Mobile
-Single column layout
-Reduced heading sizes
-Full-width buttons
-Tablet
-Balanced spacing
-Medium typography
-Desktop
-Large hero section
-Wide glass input
-Full navbar layout
-16. Accessibility
-Features:
-High contrast text
-Large CTA buttons
-Clear input focus
-Readable spacing
-17. Final Design Feel
-Overall Experience:
-A futuristic AI-powered SaaS interface focused on speed, automation, and premium user experience.
+Asset Extractor — Design System
+================================================================================
+Dark glassmorphism SaaS UI. Every value in this document is taken directly
+from the source code — not aspirational or placeholder.
+
+================================================================================
+1. BRAND IDENTITY
+================================================================================
+
+Product Name : ASSET EXTRACTOR
+Style        : Dark premium SaaS, glassmorphism, minimal
+Tone         : Developer-focused, high-tech, AI-powered
+
+================================================================================
+2. COLOR SYSTEM
+================================================================================
+
+Custom Tailwind theme tokens (globals.css @theme):
+  --color-dark-950   #0B1020   — primary page background
+  --color-dark-900   #151B35   — deep dark surface / secondary background
+
+Purple accent gradient (used throughout):
+  from-purple-400   #C084FC
+  to-purple-500     #A855F7
+  Direction         left → right (gradient-to-r)
+
+Violet variant (hero heading):
+  via-purple-400 to-violet-500 — purple-300 → purple-400 → violet-500
+
+Glass surfaces (Tailwind opacity utilities):
+  bg-white/[0.02]   navbar background
+  bg-white/[0.04]   cards, step rows, feature pills
+  bg-white/[0.05]   URL input field
+  bg-white/[0.06]   stat divider, section dividers
+  bg-white/[0.08]   (referenced as border value, not bg)
+
+Glass borders:
+  border-white/[0.06]   navbar bottom, section dividers
+  border-white/[0.07]   feature pills
+  border-white/[0.08]   cards, input default border
+
+Focus / active accent:
+  border-purple-400   focus ring on input
+  focus shadow        0 0 0 1px #C084FC, 0 4px 20px rgba(192,132,252,0.15)
+
+Glow shadows (buttons / success screen):
+  Default:   0 8px 30px rgba(192,132,252,0.25)
+  Hover:     0 8px 40px rgba(192,132,252,0.45)
+  Success CTA: 0 4px 20px rgba(192,132,252,0.30) → hover 0 4px 30px …0.50
+
+Purple spotlight blur (background ambience):
+  bg-purple-500/[0.06–0.07]  w-[600px] h-[400px]  blur-[130px]  rounded-full
+
+State colors:
+  Active step   bg-purple-500/[0.08]  border-purple-500/20
+  Done (success) bg-green-500/10      border-green-500/20   text-green-400
+  Error          bg-red-500/10        border-red-500/30     text-red-400
+  Error message  bg-red-500/10        border-red-500/20     text-red-400
+
+Text colors:
+  Primary text       #ffffff  (text-white)
+  Secondary text     zinc-400 (#A1A1AA)
+  Muted text         zinc-500 (#71717A)
+  Dimmer text        zinc-600 (#52525B)
+  Purple label text  purple-300 (#D8B4FE) / purple-400 (#C084FC)
+  Placeholder        slate-400 (#94A3B8)
+
+Scrollbar:
+  Track   #0B1020
+  Thumb   #7C3AED  →  hover: #A855F7   (width: 5px, radius: 10px)
+
+Text selection:
+  Background   rgba(168, 85, 247, 0.35)
+  Text         #ffffff
+
+Body background pattern:
+  radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)
+  background-size: 28px 28px   (subtle dot grid)
+
+================================================================================
+3. TYPOGRAPHY
+================================================================================
+
+Fonts loaded via next/font/google:
+  Inter   — variable --font-inter  → Tailwind class: font-sans   (body copy)
+  Poppins — variable --font-poppins → Tailwind class: font-display (headings, logo, stats)
+  Poppins weights: 400, 500, 600, 700
+
+Font smoothing: -webkit-font-smoothing: antialiased  (applied globally)
+
+Usage in code:
+  Logo / brand name    font-display font-bold text-lg tracking-wider
+  Hero h1              font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight
+  Section h2           font-display text-2xl font-bold
+  Stats numbers        font-display text-2xl font-bold  (purple gradient)
+  Body / descriptions  text-lg text-zinc-400 (hero subtitle)  |  text-sm text-zinc-400
+  Badges / labels      text-xs uppercase tracking-widest font-medium
+  Button text          font-semibold tracking-widest text-sm
+  Step labels          text-sm font-medium
+  Progress labels      text-xs text-zinc-500
+  Caption / helper     text-xs text-zinc-500 uppercase tracking-widest
+
+================================================================================
+4. COMPONENTS
+================================================================================
+
+--- Navbar ---
+  Position    : fixed top-0 left-0 right-0 z-50
+  Background  : bg-white/[0.02] backdrop-blur-xl
+  Border      : border-b border-white/[0.06]
+  Padding     : px-8 py-5
+  Logo text   : font-display font-bold text-lg tracking-wider
+                bg-gradient-to-r from-purple-400 to-purple-500 bg-clip-text text-transparent
+  Note        : logo-only navbar — no nav links in current implementation
+
+--- URL Input Field ---
+  Container   : w-full max-w-2xl mx-auto
+  Layout      : flex-col sm:flex-row gap-3
+  Input       : h-16  rounded-full  pl-14 pr-6
+                bg-white/[0.05]  backdrop-blur-xl
+                border border-white/[0.08]
+                text-white  placeholder-slate-400  text-base
+                Focus: border-purple-400 + glow shadow  transition-all duration-300
+  Search icon : left-5 centered, w-5 h-5 text-zinc-400
+  Error state : rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm
+
+--- Extract Button ---
+  Size        : h-16 px-8 rounded-full
+  Background  : bg-gradient-to-r from-purple-400 to-purple-500
+  Text        : text-white font-semibold tracking-widest text-sm
+  Shadow      : 0 8px 30px rgba(192,132,252,0.25)
+  Hover       : shadow 0 8px 40px rgba(192,132,252,0.45)  +  scale-[1.02]
+  Active      : scale-[0.98]
+  Disabled    : opacity-40  cursor-not-allowed
+  Transition  : transition-all duration-300
+
+--- Hero Section ---
+  Layout      : min-h-screen flex flex-col, split left/right at md breakpoint
+                md:border-r border-white/[0.06]
+  Background  : Prism WebGL animation (ogl) at opacity-40
+                + gradient overlay: dark-950/60 → dark-950/30 → dark-950/80 (top→bottom)
+  Badge       : rounded-full bg-purple-500/10 border border-purple-500/20
+                dot: w-2 h-2 rounded-full bg-purple-400 animate-pulse
+                text: text-xs font-medium text-purple-300 uppercase tracking-widest
+  Heading     : Gradient text (purple-300 via-purple-400 to-violet-500) + white "In Seconds."
+  Feature pills: px-3.5 py-1.5 text-xs rounded-full bg-white/[0.04] border border-white/[0.07]
+                 hover: border-purple-500/30  text-zinc-300  transition-colors duration-200
+  Stats       : flex items-center gap-8, border-t border-white/[0.06]
+                value: font-display text-2xl font-bold purple gradient
+                label: text-xs text-zinc-500
+  Checklist   : text-sm text-zinc-400, checkmark SVG text-purple-400 w-4 h-4
+
+--- Processing Steps Card ---
+  Card        : rounded-3xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm p-6
+  Section label: text-xs text-zinc-500 uppercase tracking-widest
+  Row default : border border-transparent p-3 rounded-xl transition-all duration-500
+  Row active  : bg-purple-500/[0.08] border border-purple-500/20
+  Icons       :
+    Pending   — bg-white/[0.04]   border-white/[0.06]   text-xs text-zinc-600 (step number)
+    Active    — bg-purple-500/10  border-purple-500/20   animate-spin SVG text-purple-400
+    Done      — bg-green-500/10   border-green-500/20    checkmark SVG text-green-400
+  Step text   :
+    Pending   — text-zinc-600
+    Active    — text-white
+    Done      — text-zinc-400 line-through decoration-zinc-600
+  In-progress tag: text-xs text-purple-400 animate-pulse
+
+--- Progress Bar ---
+  Track       : h-1.5 rounded-full bg-white/[0.06]
+  Fill        : bg-gradient-to-r from-purple-400 to-purple-500  transition-all duration-700
+  Labels      : text-xs text-zinc-500  (left: "Progress", right: "N%")
+  Sub-label   : text-xs text-zinc-600 text-center
+
+--- Success Screen ---
+  Icon ring   : w-20 h-20 rounded-full bg-green-500/10 border border-green-500/30
+  Check icon  : w-10 h-10 text-green-400
+  Heading     : font-display text-3xl font-bold text-white
+  Info card   : rounded-2xl bg-white/[0.04] border border-white/[0.08] p-5
+  Download btn: gradient purple + shadow-[0_4px_20px_rgba(192,132,252,0.30)]
+  Secondary btn: bg-white/[0.05] border border-white/[0.08] text-zinc-300
+  Ambient glow: w-[600px] h-[400px] bg-purple-500/[0.07] blur-[130px] (absolute)
+
+--- Error Screen ---
+  Icon ring   : w-20 h-20 rounded-full bg-red-500/10 border border-red-500/30
+  X icon      : w-10 h-10 text-red-400
+  Error text  : text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3
+  Retry btn   : gradient purple
+  Back btn    : bg-white/[0.05] border border-white/[0.08] text-zinc-300
+
+================================================================================
+5. GLASSMORPHISM SYSTEM
+================================================================================
+
+Layers (lightest to strongest):
+  bg-white/[0.02]   — barely-there: navbar
+  bg-white/[0.04]   — cards, feature pills, step rows, info panels
+  bg-white/[0.05]   — inputs
+  bg-white/[0.08]   — used in borders (not as background)
+
+Blur levels:
+  backdrop-blur-sm   — processing step card
+  backdrop-blur-xl   — navbar, URL input
+
+Border opacity levels:
+  border-white/[0.06]   — section dividers, navbar bottom
+  border-white/[0.07]   — feature pills default
+  border-white/[0.08]   — cards, input default
+
+================================================================================
+6. ANIMATION SYSTEM
+================================================================================
+
+Standard transition  : transition-all duration-300
+Step row transition  : transition-all duration-500
+Progress bar         : transition-all duration-700
+Color transition     : transition-colors duration-200
+
+Keyframe animations (Tailwind):
+  animate-pulse   — active step badge dot, "In progress" tag
+  animate-spin    — active step spinner icon
+
+Hover micro-interactions:
+  Buttons         scale-[1.02] on hover, scale-[0.98] on active
+  Feature pills   border and text color shift (duration-200)
+  Input           border color + glow shadow (duration-300)
+  Download btn    shadow intensity increase
+
+Scroll behavior:
+  html { scroll-behavior: smooth; }
+
+================================================================================
+7. LAYOUT SYSTEM
+================================================================================
+
+Page background  : bg-dark-950 (#0B1020) + dot grid pattern
+Min height       : min-h-screen on all page roots
+Container widths : max-w-md (success/error), max-w-lg (processing), max-w-2xl (input)
+Hero split       : flex-col on mobile → md:flex-row with border-r divider
+Centering        : flex flex-col items-center justify-center (non-hero pages)
+Padding          : px-6 (page level), px-8 (navbar), px-8 md:px-16 (hero)
+Z-index          : z-50 (navbar), z-10 (content above backgrounds), absolute (glow blobs)
+
+================================================================================
+8. ICON SYSTEM
+================================================================================
+
+All icons       : Inline SVG, fill="none" stroke="currentColor"
+Stroke width    : 2 (standard), 2.5 (checkmarks for emphasis)
+Sizes           : w-4 h-4 (small labels), w-5 h-5 (input icon), w-10 h-10 (status icons)
+Colors          : Inherit from parent text class (text-zinc-400, text-purple-400, etc.)
+
+Step state icons:
+  Pending       : Step number text, zinc-600
+  Active        : Spinning arc SVG, purple-400
+  Done          : Checkmark SVG, green-400
+
+================================================================================
+9. RESPONSIVE BREAKPOINTS (Tailwind defaults)
+================================================================================
+
+  sm  : 640px   — UrlInput switches to flex-row layout
+  md  : 768px   — HeroSection switches to split layout, larger font sizes
+  lg  : 1024px  — Largest hero heading size (text-7xl)

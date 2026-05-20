@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
-import { extractImages } from "../extractor/images";
+import { extractImages, classifyImageUrl } from "../extractor/images";
+import type { CategorizedImage, ImageCategory } from "../extractor/images";
 import { extractColors } from "../extractor/colors";
 import { extractTypography } from "../extractor/typography";
 import { extractContent } from "../extractor/content";
@@ -15,6 +16,8 @@ export interface ColorPalette {
 export interface Typography {
   headingFont: string;
   bodyFont: string;
+  buttonFont: string;
+  captionFont: string;
   sizes: Record<string, string>;
 }
 
@@ -29,13 +32,14 @@ export interface PageContent {
 export interface CapturedImage {
   filename: string;
   buffer: Buffer;
+  category: ImageCategory;
 }
 
 export interface ScrapeResult {
   url: string;
   title: string;
   html: string;
-  images: string[];
+  images: CategorizedImage[];
   capturedImages: CapturedImage[];
   colors: ColorPalette;
   typography: Typography;
@@ -119,7 +123,7 @@ export async function scrape(url: string): Promise<ScrapeResult> {
           if (body.length > 1024 && body.length < 5 * 1024 * 1024) {
             const ext = reqUrl.match(/\.(png|jpe?g|gif|webp|svg|ico|avif)/i)?.[0] ?? ".png";
             const slug = Math.random().toString(36).slice(2, 8);
-            capturedImages.push({ filename: `${slug}${ext}`, buffer: body });
+            capturedImages.push({ filename: `${slug}${ext}`, buffer: body, category: classifyImageUrl(reqUrl) });
             seenImageUrls.add(reqUrl);
           }
         }

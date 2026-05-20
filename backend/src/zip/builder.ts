@@ -1,8 +1,10 @@
 import archiver from "archiver";
 import axios from "axios";
 import path from "path";
+import sharp from "sharp";
 import type { Response } from "express";
 import type { ScrapeResult } from "../scraper";
+import type { ImageCategory } from "../extractor/images";
 
 export async function buildZip(data: ScrapeResult, res: Response): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -226,12 +228,16 @@ function generatePaletteHtml(data: ScrapeResult): string {
 // Typography/
 // ─────────────────────────────────────────────
 function generateTypographyJson(data: ScrapeResult): string {
+  const { typography } = data;
   return JSON.stringify({
     source: data.url,
     extractedAt: new Date().toISOString(),
-    headingFont: data.typography.headingFont,
-    bodyFont: data.typography.bodyFont,
-    sizes: data.typography.sizes,
+    primaryBrandFont: typography.headingFont,
+    headingFont: typography.headingFont,
+    bodyFont: typography.bodyFont,
+    buttonFont: typography.buttonFont,
+    captionFont: typography.captionFont,
+    sizes: typography.sizes,
   }, null, 2);
 }
 
@@ -240,14 +246,35 @@ function generateTypographyHtml(data: ScrapeResult): string {
   const shortTitle = siteShortName(url, title);
   const googleFonts = buildGoogleFontsUrl(typography.headingFont, typography.bodyFont);
 
-  const sizeRows = Object.entries(typography.sizes).map(([tag, size]) => `
+  const HEADING_TAGS  = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
+  const BODY_TAGS     = new Set(["p", "body"]);
+  const BUTTON_TAGS   = new Set(["button"]);
+  const CAPTION_TAGS  = new Set(["small", "caption", "label"]);
+
+  const sizeRow = (tag: string, size: string, font: string) => `
     <tr>
       <td class="tag">&lt;${tag}&gt;</td>
       <td class="size">${size}</td>
-      <td class="preview" style="font-size:${size};font-family:'${typography.headingFont}',sans-serif">
-        The quick brown fox
-      </td>
-    </tr>`).join("");
+      <td class="preview" style="font-size:${size};font-family:'${font}',sans-serif">The quick brown fox</td>
+    </tr>`;
+
+  const table = (rows: string) => `
+    <table>
+      <thead><tr><th>Element</th><th>Size</th><th>Preview</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  const headingRows  = Object.entries(typography.sizes).filter(([t]) => HEADING_TAGS.has(t))
+    .map(([t, s]) => sizeRow(t, s, typography.headingFont)).join("");
+  const bodyRows     = Object.entries(typography.sizes).filter(([t]) => BODY_TAGS.has(t))
+    .map(([t, s]) => sizeRow(t, s, typography.bodyFont)).join("");
+  const buttonRows   = Object.entries(typography.sizes).filter(([t]) => BUTTON_TAGS.has(t))
+    .map(([t, s]) => sizeRow(t, s, typography.buttonFont)).join("");
+  const captionRows  = Object.entries(typography.sizes).filter(([t]) => CAPTION_TAGS.has(t))
+    .map(([t, s]) => sizeRow(t, s, typography.captionFont)).join("");
+  const remainingRows = Object.entries(typography.sizes)
+    .filter(([t]) => !HEADING_TAGS.has(t) && !BODY_TAGS.has(t) && !BUTTON_TAGS.has(t) && !CAPTION_TAGS.has(t))
+    .map(([t, s]) => sizeRow(t, s, typography.bodyFont)).join("");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -257,25 +284,49 @@ function generateTypographyHtml(data: ScrapeResult): string {
   <title>Typography — ${esc(shortTitle)}</title>
   ${googleFonts ? `<link rel="preconnect" href="https://fonts.googleapis.com" />\n  <link href="${googleFonts}" rel="stylesheet" />` : ""}
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.6; }
     .header { margin-bottom: 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
     .header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
     .header p { font-size: 0.85rem; color: #71717a; margin: 0; }
-    .section { margin-bottom: 2.5rem; }
-    .section h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; color: #a855f7; margin-bottom: 1.25rem; }
-    .font-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-    .font-card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 1.5rem; }
-    .font-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #71717a; margin-bottom: 0.5rem; }
-    .font-name { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
-    .font-preview-h { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.5rem; }
-    .font-preview-b { font-size: 1rem; line-height: 1.6; color: #a1a1aa; }
-    table { width: 100%; border-collapse: collapse; background: #18181b; border-radius: 12px; overflow: hidden; }
-    th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; border-bottom: 1px solid #27272a; }
-    td { padding: 0.75rem 1rem; border-bottom: 1px solid #1c1c1e; vertical-align: middle; }
-    td.tag { font-family: monospace; font-size: 0.85rem; color: #a855f7; width: 80px; }
-    td.size { font-family: monospace; font-size: 0.85rem; color: #71717a; width: 80px; }
+    .section { margin-bottom: 2.5rem; background: #18181b; border: 1px solid #27272a; border-radius: 16px; overflow: hidden; }
+    .section-header { padding: 1rem 1.5rem; border-bottom: 1px solid #27272a; display: flex; align-items: center; gap: 0.75rem; }
+    .section-num { width: 24px; height: 24px; border-radius: 50%; background: #a855f7; color: #fff; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .section-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #a855f7; font-weight: 600; margin: 0; }
+    .section-body { padding: 1.5rem; }
+    /* Primary Brand Font */
+    .brand-hero { text-align: center; padding: 2rem 1.5rem; }
+    .brand-name-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #71717a; margin-bottom: 0.5rem; }
+    .brand-name { font-size: 1rem; font-weight: 600; color: #e4e4e7; margin-bottom: 1.25rem; }
+    .brand-display { font-size: 3rem; font-weight: 800; line-height: 1.1; color: #fff; margin-bottom: 0.75rem; }
+    .brand-sub { font-size: 1.1rem; line-height: 1.6; color: #71717a; }
+    /* Font pair cards */
+    .font-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .font-card { background: #0f0f11; border: 1px solid #27272a; border-radius: 10px; padding: 1.25rem; }
+    .font-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: #71717a; margin-bottom: 0.4rem; }
+    .font-face { font-size: 0.95rem; font-weight: 600; color: #e4e4e7; margin-bottom: 0.6rem; }
+    .font-sample-lg { font-size: 1.6rem; font-weight: 700; line-height: 1.2; color: #fff; margin-bottom: 0.3rem; }
+    .font-sample-sm { font-size: 0.95rem; line-height: 1.6; color: #a1a1aa; }
+    /* Button preview */
+    .btn-preview { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .btn-demo { padding: 0.6rem 1.4rem; border-radius: 8px; border: none; cursor: default;
+                font-weight: 600; letter-spacing: 0.01em; }
+    .btn-demo.solid  { background: #a855f7; color: #fff; }
+    .btn-demo.outline{ background: transparent; border: 1.5px solid #a855f7; color: #a855f7; }
+    .btn-demo.ghost  { background: #27272a; color: #e4e4e7; }
+    /* Caption demo */
+    .caption-row { display: flex; align-items: baseline; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .caption-demo { color: #a1a1aa; }
+    .caption-meta { font-family: monospace; font-size: 0.75rem; color: #52525b; }
+    /* Type scale table */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 0.65rem 1rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; border-bottom: 1px solid #27272a; }
+    td { padding: 0.7rem 1rem; border-bottom: 1px solid #1c1c1e; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    td.tag  { font-family: monospace; font-size: 0.82rem; color: #a855f7; width: 80px; white-space: nowrap; }
+    td.size { font-family: monospace; font-size: 0.82rem; color: #71717a; width: 90px; white-space: nowrap; }
     td.preview { color: #d4d4d8; }
-    @media (max-width: 600px) { .font-cards { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .font-grid { grid-template-columns: 1fr; } .brand-display { font-size: 2rem; } }
   </style>
 </head>
 <body>
@@ -284,31 +335,106 @@ function generateTypographyHtml(data: ScrapeResult): string {
     <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
   </div>
 
+  <!-- ① Primary Brand Font -->
   <div class="section">
-    <h2>Fonts</h2>
-    <div class="font-cards">
-      <div class="font-card">
-        <div class="font-label">Heading Font</div>
-        <div class="font-name" style="font-family:'${esc(typography.headingFont)}',sans-serif">${esc(typography.headingFont)}</div>
-        <div class="font-preview-h" style="font-family:'${esc(typography.headingFont)}',sans-serif">Extract Any Website In Seconds</div>
-      </div>
-      <div class="font-card">
-        <div class="font-label">Body Font</div>
-        <div class="font-name" style="font-family:'${esc(typography.bodyFont)}',sans-serif">${esc(typography.bodyFont)}</div>
-        <div class="font-preview-b" style="font-family:'${esc(typography.bodyFont)}',sans-serif">The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.</div>
-      </div>
+    <div class="section-header">
+      <span class="section-num">1</span>
+      <h2 class="section-title">Primary Brand Font</h2>
+    </div>
+    <div class="brand-hero">
+      <div class="brand-name-label">Brand Typeface</div>
+      <div class="brand-name" style="font-family:'${esc(typography.headingFont)}',sans-serif">${esc(typography.headingFont)}</div>
+      <div class="brand-display" style="font-family:'${esc(typography.headingFont)}',sans-serif">${esc(shortTitle)}</div>
+      <div class="brand-sub" style="font-family:'${esc(typography.bodyFont)}',sans-serif">The quick brown fox jumps over the lazy dog.</div>
     </div>
   </div>
 
+  <!-- ② Heading Typography -->
   <div class="section">
-    <h2>Type Scale</h2>
-    <table>
-      <thead>
-        <tr><th>Element</th><th>Size</th><th>Preview</th></tr>
-      </thead>
-      <tbody>${sizeRows}</tbody>
-    </table>
+    <div class="section-header">
+      <span class="section-num">2</span>
+      <h2 class="section-title">Heading Typography</h2>
+    </div>
+    <div class="section-body">
+      <div class="font-grid" style="margin-bottom:1.25rem">
+        <div class="font-card">
+          <div class="font-label">Heading Font</div>
+          <div class="font-face" style="font-family:'${esc(typography.headingFont)}',sans-serif">${esc(typography.headingFont)}</div>
+          <div class="font-sample-lg" style="font-family:'${esc(typography.headingFont)}',sans-serif">Aa Bb Cc Dd</div>
+          <div class="font-sample-sm" style="font-family:'${esc(typography.headingFont)}',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 !@#$%^&*()</div>
+        </div>
+      </div>
+      ${headingRows ? table(headingRows) : "<p style='color:#52525b;font-size:0.85rem'>No heading sizes detected.</p>"}
+    </div>
   </div>
+
+  <!-- ③ Body Typography -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">3</span>
+      <h2 class="section-title">Body Typography</h2>
+    </div>
+    <div class="section-body">
+      <div class="font-grid" style="margin-bottom:1.25rem">
+        <div class="font-card">
+          <div class="font-label">Body Font</div>
+          <div class="font-face" style="font-family:'${esc(typography.bodyFont)}',sans-serif">${esc(typography.bodyFont)}</div>
+          <div class="font-sample-sm" style="font-family:'${esc(typography.bodyFont)}',sans-serif;font-size:1rem;line-height:1.7;color:#e4e4e7">The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump.</div>
+        </div>
+      </div>
+      ${bodyRows ? table(bodyRows) : "<p style='color:#52525b;font-size:0.85rem'>No body sizes detected.</p>"}
+    </div>
+  </div>
+
+  <!-- ④ Button / Accent Styles -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">4</span>
+      <h2 class="section-title">Button / Accent Styles</h2>
+    </div>
+    <div class="section-body">
+      <div class="btn-preview" style="margin-bottom:1.25rem;font-family:'${esc(typography.buttonFont)}',sans-serif">
+        <button class="btn-demo solid"  style="font-family:'${esc(typography.buttonFont)}',sans-serif;font-size:${typography.sizes["button"] ?? "0.9375rem"}">Primary Action</button>
+        <button class="btn-demo outline" style="font-family:'${esc(typography.buttonFont)}',sans-serif;font-size:${typography.sizes["button"] ?? "0.9375rem"}">Secondary</button>
+        <button class="btn-demo ghost"  style="font-family:'${esc(typography.buttonFont)}',sans-serif;font-size:${typography.sizes["button"] ?? "0.9375rem"}">Ghost</button>
+      </div>
+      ${buttonRows ? table(buttonRows) : "<p style='color:#52525b;font-size:0.85rem'>No button sizes detected.</p>"}
+    </div>
+  </div>
+
+  <!-- ⑤ Caption / Small Text -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">5</span>
+      <h2 class="section-title">Caption / Small Text</h2>
+    </div>
+    <div class="section-body">
+      <div style="margin-bottom:1.25rem">
+        <div class="caption-row">
+          <span class="caption-demo" style="font-family:'${esc(typography.captionFont)}',sans-serif;font-size:${typography.sizes["caption"] ?? "0.75rem"}">Image caption — extracted from ${esc(shortTitle)}</span>
+          <span class="caption-meta">${typography.sizes["caption"] ?? "0.75rem"} · ${esc(typography.captionFont)}</span>
+        </div>
+        <div class="caption-row">
+          <span class="caption-demo" style="font-family:'${esc(typography.captionFont)}',sans-serif;font-size:${typography.sizes["small"] ?? "0.875rem"}">Helper text, labels, metadata</span>
+          <span class="caption-meta">${typography.sizes["small"] ?? "0.875rem"} · small</span>
+        </div>
+      </div>
+      ${captionRows ? table(captionRows) : "<p style='color:#52525b;font-size:0.85rem'>No caption sizes detected.</p>"}
+    </div>
+  </div>
+
+  <!-- ⑥ Remaining Typography Styles -->
+  ${remainingRows ? `
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">6</span>
+      <h2 class="section-title">Remaining Typography Styles</h2>
+    </div>
+    <div class="section-body">
+      ${table(remainingRows)}
+    </div>
+  </div>` : ""}
+
 </body>
 </html>`;
 }
@@ -506,84 +632,88 @@ ${sizes}
 }
 
 // ─────────────────────────────────────────────
-// Images/ — browser-captured bitmaps + server-side meta/OG downloads
+// Images/ — organised by category with format normalisation
 // ─────────────────────────────────────────────
+
+const CATEGORY_FOLDER: Record<ImageCategory, string> = {
+  logo:         "Images/Logo",
+  hero:         "Images/Hero",
+  product:      "Images/Product",
+  illustration: "Images/Illustrations",
+  icon:         "Images/Icons",
+  background:   "Images/Background",
+  thumbnail:    "Images/Thumbnails",
+  other:        "Images",
+};
+
+/** Convert any raster format to PNG. SVGs are returned unchanged. */
+async function toRaster(buf: Buffer, ext: string): Promise<{ buf: Buffer; ext: string }> {
+  if (ext === ".svg") return { buf, ext };
+  if (ext === ".jpg" || ext === ".jpeg" || ext === ".png") return { buf, ext: ext === ".jpg" ? ".jpg" : ext };
+  try {
+    const converted = await sharp(buf).png().toBuffer();
+    return { buf: converted, ext: ".png" };
+  } catch {
+    return { buf, ext };
+  }
+}
+
+const DL_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+  "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+};
+
 async function addImages(data: ScrapeResult, archive: archiver.Archiver): Promise<void> {
   let count = 0;
+  const MAX = 30;
+  const slug = () => Math.random().toString(36).slice(2, 8);
 
-  // 1. Browser-captured bitmap images (PNG/JPEG/WebP/GIF/AVIF — not SVG)
-  //    These bypass CDN hotlink protection since the browser fetched them with cookies.
-  const bitmaps = data.capturedImages.filter((img) => /\.(png|jpe?g|gif|webp|avif|ico)$/i.test(img.filename));
-  const svgs    = data.capturedImages.filter((img) => /\.svg$/i.test(img.filename));
+  // 1. Browser-captured images — already have buffers, classified by URL
+  for (const img of data.capturedImages) {
+    if (count >= MAX) break;
+    const ext = path.extname(img.filename).toLowerCase();
+    const folder = CATEGORY_FOLDER[img.category];
 
-  for (const img of bitmaps) {
-    archive.append(img.buffer, { name: `Images/${img.filename}` });
+    if (ext === ".svg") {
+      archive.append(img.buffer, { name: `${folder}/${slug()}.svg` });
+    } else {
+      const { buf, ext: outExt } = await toRaster(img.buffer, ext);
+      archive.append(buf, { name: `${folder}/${slug()}${outExt}` });
+    }
     count++;
   }
 
-  // 2. Server-side download for meta/OG images (og:image, twitter:image, apple-touch-icon)
-  //    These sit at the top of data.images and are almost always accessible JPEG/PNG files.
-  //    Always attempt these regardless of what the browser captured.
-  const metaUrls = data.images.slice(0, 8);
+  // 2. Server-side download for URL-discovered images (meta/OG + DOM)
   await Promise.allSettled(
-    metaUrls.map(async (url) => {
-      if (count >= 20) return;
+    data.images.slice(0, 30).map(async ({ url, category }) => {
+      if (count >= MAX) return;
       try {
         const res = await axios.get<ArrayBuffer>(url, {
           responseType: "arraybuffer",
           timeout: 8_000,
           maxContentLength: 5 * 1024 * 1024,
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
-            "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
-            "Referer": new URL(url).origin,
-          },
+          headers: { ...DL_HEADERS, Referer: new URL(url).origin },
         });
         const ext = (path.extname(new URL(url).pathname).split("?")[0] || ".jpg").toLowerCase();
         if (!/\.(png|jpe?g|gif|webp|avif|svg|ico)$/.test(ext)) return;
-        const slug = Math.random().toString(36).slice(2, 8);
-        archive.append(Buffer.from(res.data), { name: `Images/${slug}${ext}` });
+        const folder = CATEGORY_FOLDER[category];
+        const raw = Buffer.from(res.data);
+
+        if (ext === ".svg") {
+          archive.append(raw, { name: `${folder}/${slug()}.svg` });
+        } else {
+          const { buf, ext: outExt } = await toRaster(raw, ext);
+          archive.append(buf, { name: `${folder}/${slug()}${outExt}` });
+        }
         count++;
       } catch { /* skip inaccessible */ }
     })
   );
 
-  // 3. Server-side download for remaining DOM images (if still low)
-  if (count < 5 && data.images.length > 8) {
-    await Promise.allSettled(
-      data.images.slice(8, 30).map(async (url) => {
-        if (count >= 15) return;
-        try {
-          const res = await axios.get<ArrayBuffer>(url, {
-            responseType: "arraybuffer",
-            timeout: 6_000,
-            maxContentLength: 5 * 1024 * 1024,
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
-              "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
-              "Referer": new URL(url).origin,
-            },
-          });
-          const ext = (path.extname(new URL(url).pathname).split("?")[0] || ".jpg").toLowerCase();
-          if (!/\.(png|jpe?g|gif|webp|avif|svg|ico)$/.test(ext)) return;
-          const slug = Math.random().toString(36).slice(2, 8);
-          archive.append(Buffer.from(res.data), { name: `Images/${slug}${ext}` });
-          count++;
-        } catch { /* skip */ }
-      })
-    );
-  }
-
-  // 4. Add SVG captures as supplementary icons (logos etc.)
-  for (const img of svgs.slice(0, 10)) {
-    archive.append(img.buffer, { name: `Images/${img.filename}` });
-    count++;
-  }
-
-  // 5. Ensure folder always has something
+  // 3. Ensure folder always has something
   if (count === 0) {
     const note = data.images.length > 0
-      ? `Images could not be downloaded (CDN protection).\n\nDetected URLs:\n${data.images.slice(0, 20).join("\n")}`
+      ? `Images could not be downloaded (CDN protection).\n\nDetected URLs:\n${data.images.slice(0, 20).map((i) => i.url).join("\n")}`
       : "No images were found on this page.";
     archive.append(note, { name: "Images/image-urls.txt" });
   }
@@ -603,7 +733,7 @@ Date: ${new Date().toISOString()}
 
 | Folder | Contents |
 |--------|----------|
-| Images/ | ${data.images.length} downloaded website images |
+| Images/Logo/, Hero/, Product/, … | ${data.images.length} downloaded website images |
 | Content/ | Extracted text — headings, paragraphs, buttons, links |
 | Design System/ | Full SPA preview (index.html + styles.css) + design-system.json |
 | Colour Palette/ | Visual palette (palette.html) + palette.json |
