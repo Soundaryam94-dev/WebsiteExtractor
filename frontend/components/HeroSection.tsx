@@ -42,14 +42,6 @@ export default function HeroSection() {
         {/* LEFT — content */}
         <div className="flex-1 flex flex-col justify-center px-8 md:px-16 py-8 md:py-12 gap-8
                         md:border-r md:border-white/[0.06]">
-          {/* Badge */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 w-fit">
-            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-            <span className="text-xs font-medium text-purple-300 tracking-widest uppercase">
-              AI-Powered Extraction
-            </span>
-          </div>
-
           {/* Heading */}
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight">
             <span className="bg-gradient-to-r from-purple-300 via-purple-400 to-violet-500 bg-clip-text text-transparent">
