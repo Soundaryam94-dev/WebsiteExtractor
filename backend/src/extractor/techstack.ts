@@ -507,34 +507,43 @@ export async function extractTechStack(
     add(d.freshchat,   "Freshchat", "chat", "high");
     add(d.livechat,    "LiveChat",  "chat", "high");
 
-    // Infrastructure: Hosting
-    add(d.vercel,  "Vercel",  "hosting", "high");
-    add(d.netlify, "Netlify", "hosting", "high");
+    // Infrastructure: Hosting (DOM-level fallback — headers are more reliable, done below)
+    add(d.vercel,  "Vercel",  "hosting", "medium");
+    add(d.netlify, "Netlify", "hosting", "medium");
   }
 
   // ── Response header detection (backend stack) ─────────────────────────────
-  const server    = (headers["server"]         ?? "").toLowerCase();
-  const powered   = (headers["x-powered-by"]   ?? "").toLowerCase();
-  const setCookie = (headers["set-cookie"]      ?? "").toLowerCase();
-  const generator = (headers["x-generator"]    ?? "").toLowerCase();
+  const server    = (headers["server"]       ?? "").toLowerCase();
+  const powered   = (headers["x-powered-by"] ?? "").toLowerCase();
+  const setCookie = (headers["set-cookie"]   ?? "").toLowerCase();
+  const generator = (headers["x-generator"] ?? "").toLowerCase();
 
-  // Web Servers
-  add(server.includes("nginx"),                              "Nginx",         "be-server", "high");
-  add(server.includes("apache"),                             "Apache",        "be-server", "high");
-  add(server.includes("cloudflare") || !!headers["cf-ray"], "Cloudflare",    "be-server", "high");
-  add(server.includes("microsoft-iis"),                     "Microsoft IIS", "be-server", "high");
-  add(server.includes("litespeed"),                         "LiteSpeed",     "be-server", "high");
-  add(server.includes("caddy"),                             "Caddy",         "be-server", "high");
+  // ── Hosting / CDN (from headers — most reliable) ──────────────────────────
+  add(!!headers["x-vercel-id"] || !!headers["x-vercel-cache"] ||
+      server.includes("vercel"),                             "Vercel",        "hosting", "high");
+  add(!!headers["x-netlify-id"] || server.includes("netlify"),"Netlify",     "hosting", "high");
+  add(server.includes("cloudflare") || !!headers["cf-ray"], "Cloudflare",    "hosting", "high");
+  add(!!headers["x-amz-cf-id"] || !!headers["x-amz-request-id"],
+                                                             "AWS CloudFront","hosting", "high");
+  add(!!headers["x-fastly-request-id"],                      "Fastly",        "hosting", "high");
 
-  // Backend Frameworks → infer language + runtime
-  const isExpress = powered.includes("express");
-  const isDjango  = setCookie.includes("csrftoken") && !setCookie.includes("wordpress");
-  const isRails   = setCookie.includes("_rails_session") || powered.includes("rack");
-  const isLaravel = setCookie.includes("laravel_session");
-  const isSpring  = !!headers["x-application-context"];
-  const isAspNet  = powered.includes("asp.net") || !!headers["x-aspnet-version"];
-  const isPhp     = powered.includes("php") || setCookie.includes("phpsessid");
-  const isJava    = setCookie.includes("jsessionid") || isSpring;
+  // ── Web Servers ────────────────────────────────────────────────────────────
+  add(server.includes("nginx"),          "Nginx",         "be-server", "high");
+  add(server.includes("apache"),         "Apache",        "be-server", "high");
+  add(server.includes("microsoft-iis"),  "Microsoft IIS", "be-server", "high");
+  add(server.includes("litespeed"),      "LiteSpeed",     "be-server", "high");
+  add(server.includes("caddy"),          "Caddy",         "be-server", "high");
+
+  // ── Backend Frameworks (from headers) ────────────────────────────────────
+  const isExpress   = powered.includes("express");
+  const isNextSsr   = powered.includes("next.js");          // Vercel sets x-powered-by: Next.js
+  const isDjango    = setCookie.includes("csrftoken") && !setCookie.includes("wordpress");
+  const isRails     = setCookie.includes("_rails_session") || powered.includes("rack");
+  const isLaravel   = setCookie.includes("laravel_session");
+  const isSpring    = !!headers["x-application-context"];
+  const isAspNet    = powered.includes("asp.net") || !!headers["x-aspnet-version"];
+  const isPhp       = powered.includes("php") || setCookie.includes("phpsessid");
+  const isJava      = setCookie.includes("jsessionid") || isSpring;
 
   add(isExpress, "Express",       "be-framework", "high");
   add(isDjango,  "Django",        "be-framework", "high");
@@ -543,17 +552,26 @@ export async function extractTechStack(
   add(isSpring,  "Spring Boot",   "be-framework", "high");
   add(isAspNet,  "ASP.NET",       "be-framework", "high");
 
-  // Runtime Environments
-  add(isExpress || powered.includes("node"), "Node.js", "be-runtime", "high");
+  // ── Runtime Environments ──────────────────────────────────────────────────
+  // Node.js: detected directly from headers OR inferred from Node-based frameworks
+  const nodeFrameworks = ["Next.js", "Nuxt", "Remix", "Gatsby", "Astro"] as const;
+  const hasNodeFramework = nodeFrameworks.some((f) => seen.has(f));
+  add(
+    isExpress || isNextSsr || powered.includes("node") || hasNodeFramework,
+    "Node.js", "be-runtime", "high"
+  );
 
-  // Programming Languages (inferred)
-  add(isPhp,                                           "PHP",        "be-language", "high");
-  add(isDjango || powered.includes("python"),          "Python",     "be-language", "high");
-  add(isRails,                                         "Ruby",       "be-language", "high");
-  add(isJava || isSpring,                              "Java",       "be-language", "high");
-  add(isAspNet,                                        ".NET / C#",  "be-language", "high");
-  add(isExpress || powered.includes("node"),           "JavaScript", "be-language", "high");
-  add(generator.includes("drupal"),                    "PHP",        "be-language", "high");
+  // ── Programming Languages (inferred from framework/server signals) ─────────
+  add(isPhp || generator.includes("drupal"),      "PHP",        "be-language", "high");
+  add(isDjango || powered.includes("python"),     "Python",     "be-language", "high");
+  add(isRails,                                    "Ruby",       "be-language", "high");
+  add(isJava || isSpring,                         "Java",       "be-language", "high");
+  add(isAspNet,                                   ".NET / C#",  "be-language", "high");
+  // JavaScript is the language when Node.js is the runtime
+  add(
+    isExpress || isNextSsr || powered.includes("node") || hasNodeFramework,
+    "JavaScript", "be-language", "high"
+  );
 
   // ── HTML source scanning ─────────────────────────────────────────────────
   // Extract every script src and link href from raw HTML with regex.
