@@ -97,6 +97,14 @@ const WEBSITES: Record<string, string> = {
   "Tailwind CSS": "tailwindcss.com", "Styled Components": "styled-components.com",
   "Emotion": "emotion.sh", "CSS Modules": "github.com/css-modules",
   "Sass / SCSS": "sass-lang.com", "Less": "lesscss.org",
+  // Common libraries
+  "jQuery": "jquery.com", "Alpine.js": "alpinejs.dev", "htmx": "htmx.org",
+  "Lodash": "lodash.com", "Underscore.js": "underscorejs.org", "Moment.js": "momentjs.com",
+  "D3.js": "d3js.org", "Chart.js": "chartjs.org", "Highcharts": "highcharts.com",
+  "Leaflet": "leafletjs.com",
+  // Styling
+  "Google Fonts": "fonts.google.com", "Font Awesome": "fontawesome.com",
+  "Ionicons": "ionic.io/ionicons",
   // State management
   "Redux": "redux.js.org", "MobX": "mobx.js.org", "Zustand": "zustand-demo.pmnd.rs",
   "Pinia": "pinia.vuejs.org", "Vuex": "vuex.vuejs.org", "Jotai": "jotai.org",
@@ -196,12 +204,19 @@ export async function extractTechStack(
       angular:    !!(w.ng || document.querySelector("[ng-version]")),
       svelte:     !!(w.__svelte || hasScript("svelte")),
       solidjs:    !!(w.Solid || hasScript("solid-js")),
+      // Common libraries that are frameworks in their own right
+      jquery:    !!(w.jQuery || (w.$ && w.$.fn && w.$.fn.jquery)),
+      alpineJs:  !!(w.Alpine),
+      htmx:      !!(w.htmx),
 
       // ── Frontend: UI Libraries ─────────────────────────────────────────
       materialUI: !!document.querySelector(".MuiBox-root,.MuiButton-root,.MuiTypography-root"),
       antDesign:  !!document.querySelector(".ant-btn,.ant-layout,.ant-menu"),
       chakraUI:   !!(w.chakra || document.querySelector("[data-theme][class*='chakra']")),
-      bootstrap:  hasLink("bootstrap") || hasScript("bootstrap.min.js") || hasScript("bootstrap.bundle"),
+      // Bootstrap: window global (v5) + DOM data-attributes (v4/v5) + CDN link
+      bootstrap:  !!(w.bootstrap?.Modal) ||
+                  !!document.querySelector("[data-bs-toggle],[data-bs-target],[data-toggle]") ||
+                  hasLink("bootstrap") || hasScript("bootstrap.min.js") || hasScript("bootstrap.bundle"),
       radixUI:    !!document.querySelector("[data-radix-popper-content-wrapper],[data-radix-scroll-area-viewport]"),
       mantine:    !!document.querySelector(".mantine-Button-root,.mantine-Text-root") || hasScript("mantine"),
       bulma:      hasLink("bulma") || hasScript("bulma"),
@@ -213,6 +228,19 @@ export async function extractTechStack(
       styledComponents: !!(w.__SC_ATTR__) || hasScript("styled-components"),
       emotion:          !!(w.__emotion_sheet__) || hasScript("@emotion"),
       sass:             hasLink(".scss") || hasLink(".sass"),
+      googleFonts:      hasLink("fonts.googleapis.com"),
+      fontAwesome:      hasLink("font-awesome") || hasLink("fontawesome") || hasScript("font-awesome") || hasScript("fontawesome"),
+      ionicons:         hasScript("ionicons") || hasLink("ionicons"),
+
+      // ── Data / Visualisation (fe-animation) ───────────────────────────
+      d3:          !!(w.d3),
+      chartJs:     !!(w.Chart),
+      highcharts:  !!(w.Highcharts),
+      leaflet:     !!(w.L?.map),
+      // Utilities (add to fe-build for now)
+      lodash:      !!(w._ && w._.VERSION) || hasScript("lodash"),
+      underscore:  !!(w._ && w._.VERSION && !w._.chain) || hasScript("underscore"),
+      momentJs:    !!(w.moment) || hasScript("moment.min.js"),
 
       // ── Frontend: State Management ─────────────────────────────────────
       redux:   !!(w.__REDUX_DEVTOOLS_EXTENSION__ || w.Redux || w.__redux_store__) || hasScript("redux"),
@@ -297,11 +325,14 @@ export async function extractTechStack(
     add(d.gatsby,  "Gatsby",  "fe-framework", "high");
     add(d.remix,   "Remix",   "fe-framework", "high");
     add(d.astro,   "Astro",   "fe-framework", "high");
-    add(d.react  && !d.next && !d.gatsby && !d.remix, "React",   "fe-framework", "high");
-    add(d.vue    && !d.nuxt,                          "Vue.js",  "fe-framework", "high");
-    add(d.angular,                                    "Angular", "fe-framework", "high");
-    add(d.svelte,                                     "Svelte",  "fe-framework", "high");
-    add(d.solidjs,                                    "SolidJS", "fe-framework", "high");
+    add(d.react  && !d.next && !d.gatsby && !d.remix, "React",      "fe-framework", "high");
+    add(d.vue    && !d.nuxt,                          "Vue.js",     "fe-framework", "high");
+    add(d.angular,                                    "Angular",    "fe-framework", "high");
+    add(d.svelte,                                     "Svelte",     "fe-framework", "high");
+    add(d.solidjs,                                    "SolidJS",    "fe-framework", "high");
+    add(d.jquery,                                     "jQuery",     "fe-framework", "high");
+    add(d.alpineJs,                                   "Alpine.js",  "fe-framework", "high");
+    add(d.htmx,                                       "htmx",       "fe-framework", "high");
 
     // UI Libraries
     add(d.materialUI, "Material UI", "fe-ui", "high");
@@ -318,6 +349,9 @@ export async function extractTechStack(
     add(d.styledComponents,                "Styled Components", "fe-styling", "high");
     add(d.emotion,                         "Emotion",           "fe-styling", "high");
     add(d.sass,                            "Sass / SCSS",       "fe-styling", "medium");
+    add(d.googleFonts,                     "Google Fonts",      "fe-styling", "high");
+    add(d.fontAwesome,                     "Font Awesome",      "fe-styling", "high");
+    add(d.ionicons,                        "Ionicons",          "fe-styling", "high");
 
     // State Management
     add(d.redux,   "Redux",  "fe-state", "high");
@@ -336,12 +370,19 @@ export async function extractTechStack(
     add(d.swiper,       "Swiper",        "fe-animation", "high");
     add(d.aos,          "AOS",           "fe-animation", "high");
     add(d.animeJs,      "Anime.js",      "fe-animation", "high");
+    add(d.d3,           "D3.js",         "fe-animation", "high");
+    add(d.chartJs,      "Chart.js",      "fe-animation", "high");
+    add(d.highcharts,   "Highcharts",    "fe-animation", "high");
+    add(d.leaflet,      "Leaflet",       "fe-animation", "high");
 
     // Build Tools
-    add(d.vite,      "Vite",      "fe-build", "high");
-    add(d.webpack,   "Webpack",   "fe-build", "high");
-    add(d.parcel,    "Parcel",    "fe-build", "medium");
-    add(d.turbopack, "Turbopack", "fe-build", "medium");
+    add(d.vite,      "Vite",           "fe-build", "high");
+    add(d.webpack,   "Webpack",        "fe-build", "high");
+    add(d.parcel,    "Parcel",         "fe-build", "medium");
+    add(d.turbopack, "Turbopack",      "fe-build", "medium");
+    add(d.lodash,    "Lodash",         "fe-build", "high");
+    add(d.underscore,"Underscore.js",  "fe-build", "high");
+    add(d.momentJs,  "Moment.js",      "fe-build", "high");
 
     // Platform: CMS
     add(d.wordpress,   "WordPress",   "cms", "high");
