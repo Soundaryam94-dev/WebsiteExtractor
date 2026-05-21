@@ -20,6 +20,7 @@ const ZIP_CONTENTS = [
   { label: "Typography/",      sub: "typography.json + .html" },
   { label: "Content/",         sub: "content.json + .html" },
   { label: "Design System/",   sub: "index.html + styles.css" },
+  { label: "Tech Stack/",      sub: "techstack.json + .html" },
   { label: "README.md",        sub: "Quick start guide" },
 ];
 

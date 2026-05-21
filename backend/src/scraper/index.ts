@@ -4,6 +4,8 @@ import type { CategorizedImage, ImageCategory } from "../extractor/images";
 import { extractColors } from "../extractor/colors";
 import { extractTypography } from "../extractor/typography";
 import { extractContent } from "../extractor/content";
+import { extractTechStack } from "../extractor/techstack";
+import type { TechStack } from "../extractor/techstack";
 
 export interface ColorPalette {
   primary: string;
@@ -44,6 +46,7 @@ export interface ScrapeResult {
   colors: ColorPalette;
   typography: Typography;
   content: PageContent;
+  techStack: TechStack;
 }
 
 export async function scrape(url: string): Promise<ScrapeResult> {
@@ -186,14 +189,15 @@ export async function scrape(url: string): Promise<ScrapeResult> {
     }
     const html = await page.content().catch(() => "<html><body></body></html>");
 
-    const [images, colors, typography, content] = await Promise.all([
+    const [images, colors, typography, content, techStack] = await Promise.all([
       extractImages(page, url),
       extractColors(page, html),
       extractTypography(page, html),
       extractContent(page, html),
+      extractTechStack(page, html),
     ]);
 
-    return { url, title, html, images, capturedImages, colors, typography, content };
+    return { url, title, html, images, capturedImages, colors, typography, content, techStack };
   } finally {
     await browser.close();
   }

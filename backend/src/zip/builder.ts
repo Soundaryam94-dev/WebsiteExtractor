@@ -34,6 +34,10 @@ export async function buildZip(data: ScrapeResult, res: Response): Promise<void>
     archive.append(generateTypographyJson(data), { name: "Typography/typography.json" });
     archive.append(generateTypographyHtml(data), { name: "Typography/typography.html" });
 
+    // ── Tech Stack/ ──
+    archive.append(generateTechStackJson(data), { name: "Tech Stack/techstack.json" });
+    archive.append(generateTechStackHtml(data), { name: "Tech Stack/techstack.html" });
+
     // ── README ──
     archive.append(generateReadme(data), { name: "README.md" });
 
@@ -720,6 +724,123 @@ async function addImages(data: ScrapeResult, archive: archiver.Archiver): Promis
 }
 
 // ─────────────────────────────────────────────
+// Tech Stack/
+// ─────────────────────────────────────────────
+
+const CATEGORY_LABELS: Record<string, string> = {
+  framework:  "Frontend Framework",
+  cms:        "CMS / Platform",
+  ecommerce:  "E-commerce",
+  analytics:  "Analytics & Tracking",
+  chat:       "Chat & Support",
+  ui:         "UI Library",
+  tagmanager: "Tag Manager",
+  hosting:    "Hosting & CDN",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  framework:  "#6366f1",
+  cms:        "#22c55e",
+  ecommerce:  "#f97316",
+  analytics:  "#a855f7",
+  chat:       "#06b6d4",
+  ui:         "#eab308",
+  tagmanager: "#ec4899",
+  hosting:    "#64748b",
+};
+
+function generateTechStackJson(data: ScrapeResult): string {
+  const grouped: Record<string, object[]> = {};
+  for (const item of data.techStack.items) {
+    if (!grouped[item.category]) grouped[item.category] = [];
+    grouped[item.category].push({ name: item.name, confidence: item.confidence, website: item.website });
+  }
+  return JSON.stringify({
+    source: data.url,
+    title: data.title,
+    extractedAt: new Date().toISOString(),
+    total: data.techStack.items.length,
+    ...grouped,
+  }, null, 2);
+}
+
+function generateTechStackHtml(data: ScrapeResult): string {
+  const { techStack, title, url } = data;
+  const shortTitle = siteShortName(url, title);
+
+  const categories = Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>;
+  const sections = categories.map((cat) => {
+    const items = techStack.items.filter((i) => i.category === cat);
+    if (!items.length) return "";
+    const color = CATEGORY_COLORS[cat];
+    const badges = items.map((item) => {
+      const conf = item.confidence === "high" ? "solid" : item.confidence === "medium" ? "dashed" : "dotted";
+      const link = item.website ? `<a href="https://${item.website}" style="color:inherit;text-decoration:none" target="_blank">` : "";
+      const close = item.website ? "</a>" : "";
+      return `<div class="badge" style="border-style:${conf};border-color:${color}40;color:${color}">
+        ${link}<span class="badge-name">${esc(item.name)}</span>${close}
+        <span class="badge-conf" style="color:${color}80">${item.confidence}</span>
+      </div>`;
+    }).join("\n");
+    return `
+    <div class="section">
+      <div class="section-head">
+        <span class="dot" style="background:${color}"></span>
+        <h2 class="section-title">${CATEGORY_LABELS[cat]}</h2>
+        <span class="count" style="color:${color}">${items.length}</span>
+      </div>
+      <div class="badges">${badges}</div>
+    </div>`;
+  }).join("\n");
+
+  const total = techStack.items.length;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tech Stack — ${esc(shortTitle)}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; }
+    .header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
+    .header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .header p { font-size: 0.85rem; color: #71717a; margin: 0.25rem 0 0; }
+    .summary { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .stat { background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 0.75rem 1.25rem; font-size: 0.85rem; color: #a1a1aa; }
+    .stat strong { display: block; font-size: 1.4rem; font-weight: 700; color: #e4e4e7; }
+    .section { margin-bottom: 1.75rem; background: #18181b; border: 1px solid #27272a; border-radius: 14px; overflow: hidden; }
+    .section-head { display: flex; align-items: center; gap: 0.6rem; padding: 0.85rem 1.25rem; border-bottom: 1px solid #27272a; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin: 0; flex: 1; color: #a1a1aa; }
+    .count { font-size: 0.72rem; font-weight: 700; }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 1rem 1.25rem; }
+    .badge { display: flex; align-items: center; gap: 0.5rem; border: 1px solid; border-radius: 8px; padding: 0.45rem 0.85rem; font-size: 0.85rem; background: #0f0f11; }
+    .badge-name { font-weight: 500; }
+    .badge-conf { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .empty { color: #52525b; font-size: 0.85rem; padding: 1rem 1.25rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Tech Stack — ${esc(shortTitle)}</h1>
+    <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
+  </div>
+
+  <div class="summary">
+    <div class="stat"><strong>${total}</strong>Technologies detected</div>
+    ${Object.keys(CATEGORY_LABELS).map((cat) => {
+      const count = techStack.items.filter((i) => i.category === cat).length;
+      return count ? `<div class="stat"><strong style="color:${CATEGORY_COLORS[cat]}">${count}</strong>${CATEGORY_LABELS[cat]}</div>` : "";
+    }).join("\n    ")}
+  </div>
+
+  ${total === 0 ? `<div class="empty">No technologies detected on this page.</div>` : sections}
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────
 // README
 // ─────────────────────────────────────────────
 function generateReadme(data: ScrapeResult): string {
@@ -738,6 +859,7 @@ Date: ${new Date().toISOString()}
 | Design System/ | Full SPA preview (index.html + styles.css) + design-system.json |
 | Colour Palette/ | Visual palette (palette.html) + palette.json |
 | Typography/ | Font preview (typography.html) + typography.json |
+| Tech Stack/ | Detected technologies (techstack.html) + techstack.json |
 
 ## Design Tokens
 
