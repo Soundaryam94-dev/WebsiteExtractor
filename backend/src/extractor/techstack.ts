@@ -205,26 +205,35 @@ export async function extractTechStack(
       remix:   !!(w.__remixContext),
       astro:   !!document.querySelector("astro-island"),
       // React: window.React is stripped in production builds — use fiber inspection instead.
-      // React 16+ attaches __reactFiber$<key> to every rendered DOM node.
+      // React 16+ attaches __reactFiber$<key> to EVERY rendered DOM node.
+      // We scan multiple candidate elements to handle any root element name.
       react: !!(
         w.React ||
         document.querySelector("[data-reactroot],[data-react-helmet]") ||
         (() => {
-          try {
-            const candidates = [
-              document.getElementById("root"),
-              document.getElementById("app"),
-              document.getElementById("main"),
-              document.getElementById("__next"),
-              document.body?.firstElementChild,
-            ];
-            return candidates.some((el) =>
-              el && Object.keys(el).some(
+          const isReactEl = (el: Element | null) => {
+            if (!el) return false;
+            try {
+              return Object.keys(el).some(
                 (k) => k.startsWith("__reactFiber") ||
                        k.startsWith("__reactInternalInstance") ||
-                       k.startsWith("__reactEvents")
-              )
-            );
+                       k.startsWith("__reactEvents") ||
+                       k.startsWith("__reactProps")
+              );
+            } catch { return false; }
+          };
+          try {
+            // 1. Try common root IDs
+            const byId = ["root","app","main","__next","react-root","app-root","__APP__"]
+              .map(id => document.getElementById(id));
+            if (byId.some(isReactEl)) return true;
+            // 2. Try first child of body
+            if (isReactEl(document.body?.firstElementChild as Element)) return true;
+            // 3. Scan first 20 rendered elements (divs, sections, etc.)
+            const sample = Array.from(
+              document.querySelectorAll("div,section,main,header,nav,article,aside,span")
+            ).slice(0, 20);
+            return sample.some(isReactEl);
           } catch { return false; }
         })()
       ),
@@ -291,15 +300,21 @@ export async function extractTechStack(
       momentJs:    !!(w.moment) || hasScript("moment.min.js"),
 
       // ── Frontend: State Management ─────────────────────────────────────
-      // Redux: devtools hook not present in prod — check webpackChunk for redux store shape
       redux: !!(
         w.Redux ||
         w.__REDUX_DEVTOOLS_EXTENSION__ ||
         hasScript("redux") ||
-        // Redux toolkit bundles as "redux" inside webpack chunks
-        (w.webpackChunk && (() => {
-          try { return JSON.stringify(w).includes('"getState"'); } catch { return false; }
-        })())
+        // Look for a Redux store shape on any global: { getState, dispatch, subscribe }
+        (() => {
+          try {
+            return Object.values(w).some((v: any) =>
+              v && typeof v === "object" &&
+              typeof v.getState === "function" &&
+              typeof v.dispatch === "function" &&
+              typeof v.subscribe === "function"
+            );
+          } catch { return false; }
+        })()
       ),
       mobx:    !!(w.mobx) || hasScript("mobx"),
       pinia:   !!(w.__pinia),
