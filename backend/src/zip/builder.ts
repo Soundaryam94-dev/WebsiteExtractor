@@ -765,53 +765,29 @@ function generateTechStackHtml(data: ScrapeResult): string {
   const shortTitle = siteShortName(url, title);
   const total = techStack.items.length;
 
-  // Build one block per TECH_GROUP that has at least one detected item
-  const groupBlocks = TECH_GROUPS.map((group) => {
-    const catBlocks = group.categories.map((cat) => {
-      const items = techStack.items.filter((i) => i.category === cat.key);
-      if (!items.length) return "";
-      const badges = items.map((item) => {
-        const borderStyle = item.confidence === "high" ? "solid" : item.confidence === "medium" ? "dashed" : "dotted";
-        const inner = item.website
-          ? `<a href="https://${esc(item.website)}" style="color:inherit;text-decoration:none" target="_blank">${esc(item.name)}</a>`
-          : esc(item.name);
-        return `<span class="badge" style="border-style:${borderStyle};border-color:${group.color}33;color:${group.color}">${inner}</span>`;
-      }).join("");
-      return `
-        <div class="cat-row">
-          <div class="cat-label">${esc(cat.label)}</div>
-          <div class="badges">${badges}</div>
-        </div>`;
+  // One section per group — all items in the group shown as flat badges (no sub-category labels)
+  const groupSections = TECH_GROUPS.map((group) => {
+    const items = group.categories.flatMap((cat) =>
+      techStack.items.filter((i) => i.category === cat.key)
+    );
+    if (!items.length) return "";
+
+    const badges = items.map((item) => {
+      const link = item.website
+        ? `<a href="https://${esc(item.website)}" target="_blank">${esc(item.name)}</a>`
+        : esc(item.name);
+      return `<span class="badge" style="border-color:${group.color}44;color:${group.color};background:${group.color}0d">${link}</span>`;
     }).join("");
 
-    if (!catBlocks.trim()) return "";
-
-    const groupTotal = group.categories.reduce(
-      (n, cat) => n + techStack.items.filter((i) => i.category === cat.key).length, 0
-    );
-
     return `
-    <div class="group">
-      <div class="group-header" style="border-left-color:${group.color}">
-        <span class="group-title" style="color:${group.color}">${esc(group.label)}</span>
-        <span class="group-count" style="background:${group.color}18;color:${group.color}">${groupTotal}</span>
-      </div>
-      <div class="group-body">${catBlocks}
-      </div>
-    </div>`;
+  <div class="section">
+    <div class="section-header" style="border-left-color:${group.color}">
+      <span class="section-title" style="color:${group.color}">${esc(group.label)}</span>
+      <span class="section-count" style="background:${group.color}1a;color:${group.color}">${items.length}</span>
+    </div>
+    <div class="badges">${badges}</div>
+  </div>`;
   }).join("\n");
-
-  // Summary stats (one pill per group)
-  const summaryPills = TECH_GROUPS.map((g) => {
-    const n = g.categories.reduce(
-      (acc, cat) => acc + techStack.items.filter((i) => i.category === cat.key).length, 0
-    );
-    if (!n) return "";
-    return `<div class="stat-pill" style="border-color:${g.color}33">
-      <span class="stat-num" style="color:${g.color}">${n}</span>
-      <span class="stat-label">${esc(g.label)}</span>
-    </div>`;
-  }).join("\n  ");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -821,49 +797,37 @@ function generateTechStackHtml(data: ScrapeResult): string {
   <title>Tech Stack — ${esc(shortTitle)}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.5; }
-    a { color: inherit; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.5; }
     .header { margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
-    .header h1 { font-size: 1.5rem; margin: 0 0 0.2rem; }
+    .header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; font-weight: 700; }
     .header p  { font-size: 0.82rem; color: #71717a; margin: 0; }
-    /* Summary row */
-    .summary { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 2rem; }
-    .total-pill { background: #18181b; border: 1px solid #3f3f46; border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.82rem; font-weight: 600; color: #e4e4e7; }
-    .stat-pill  { background: #18181b; border: 1px solid; border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.78rem; display: flex; align-items: center; gap: 0.4rem; }
-    .stat-num   { font-weight: 700; font-size: 0.88rem; }
-    .stat-label { color: #a1a1aa; }
-    /* Groups */
-    .group { margin-bottom: 1.5rem; border: 1px solid #27272a; border-radius: 14px; overflow: hidden; }
-    .group-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.8rem 1.25rem; background: #18181b; border-left: 3px solid; border-bottom: 1px solid #27272a; }
-    .group-title { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
-    .group-count { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; }
-    .group-body  { padding: 0.5rem 0; }
-    /* Category rows */
-    .cat-row { display: flex; align-items: flex-start; gap: 1rem; padding: 0.65rem 1.25rem; border-bottom: 1px solid #1c1c1e; }
-    .cat-row:last-child { border-bottom: none; }
-    .cat-label { font-size: 0.75rem; color: #71717a; text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; padding-top: 0.25rem; min-width: 160px; }
+    .header a  { color: #a855f7; text-decoration: none; }
+    .total { display: inline-block; background: #18181b; border: 1px solid #3f3f46; border-radius: 999px; padding: 0.3rem 0.9rem; font-size: 0.8rem; color: #a1a1aa; margin-bottom: 1.75rem; }
+    /* Sections */
+    .section { margin-bottom: 1.5rem; background: #18181b; border: 1px solid #27272a; border-radius: 14px; overflow: hidden; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.25rem; background: #141416; border-left: 3px solid; border-bottom: 1px solid #27272a; }
+    .section-title  { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+    .section-count  { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 999px; }
     /* Badges */
-    .badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .badge { display: inline-block; border: 1px solid; border-radius: 6px; padding: 0.25rem 0.7rem; font-size: 0.82rem; font-weight: 500; background: #0f0f11; }
-    /* Empty */
-    .empty { color: #52525b; font-size: 0.9rem; padding: 2rem; text-align: center; }
-    @media (max-width: 600px) { .cat-label { min-width: 110px; } body { padding: 1rem; } }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem 1.25rem; }
+    .badge  { display: inline-block; border: 1px solid; border-radius: 8px; padding: 0.35rem 0.85rem; font-size: 0.88rem; font-weight: 500; }
+    .badge a { text-decoration: none; color: inherit; }
+    .badge a:hover { text-decoration: underline; }
+    /* Empty state */
+    .empty { text-align: center; color: #52525b; padding: 3rem; font-size: 0.95rem; }
+    @media (max-width: 600px) { body { padding: 1rem; } .badges { padding: 0.75rem 1rem; } }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Tech Stack — ${esc(shortTitle)}</h1>
-    <p>Extracted from <a href="${esc(url)}" style="color:#a855f7">${esc(url)}</a></p>
+    <p>Extracted from <a href="${esc(url)}">${esc(url)}</a></p>
   </div>
-
-  <div class="summary">
-    <div class="total-pill">${total} technologies detected</div>
-    ${summaryPills}
-  </div>
+  <div class="total">${total} technologies detected</div>
 
   ${total === 0
-    ? `<div class="empty">No technologies were detected on this page.<br>The site may use custom or obfuscated tooling.</div>`
-    : groupBlocks}
+    ? `<div class="empty">No technologies detected on this page.<br>The site may use custom or obfuscated tooling.</div>`
+    : groupSections}
 </body>
 </html>`;
 }
