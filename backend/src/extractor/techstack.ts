@@ -206,7 +206,16 @@ export async function extractTechStack(
 
     return {
       // ── Frontend: Frameworks ───────────────────────────────────────────
-      next:    !!(w.__NEXT_DATA__ || document.querySelector("#__next")),
+      // App Router (Next 13+) drops __NEXT_DATA__; detect via _next/static asset paths,
+      // next-route-announcer, or RSC payload script tags instead.
+      next: !!(
+        w.__NEXT_DATA__ ||
+        document.querySelector("#__next") ||
+        document.querySelector("next-route-announcer") ||
+        document.querySelector("[data-next-router-state-tree]") ||
+        hasScript("/_next/static/") ||
+        hasLink("/_next/static/")
+      ),
       nuxt:    !!(w.__NUXT__ || document.querySelector("#__nuxt")),
       gatsby:  !!(w.___gatsby || document.querySelector("#gatsby-focus-wrapper")),
       remix:   !!(w.__remixContext),
@@ -809,7 +818,9 @@ export async function extractTechStack(
   const hl = html.toLowerCase();
 
   // ── Frontend Frameworks ───────────────────────────────────────────────────
-  add(hl.includes("__next_data__"),                                     "Next.js",   "fe-framework", "medium");
+  // /_next/static/ asset paths appear in every Next.js App Router page (chunks, CSS)
+  add(hl.includes("__next_data__") || hl.includes("/_next/static/") ||
+      hl.includes("next-route-announcer"),                              "Next.js",   "fe-framework", "medium");
   add(hl.includes("__nuxt"),                                            "Nuxt",      "fe-framework", "medium");
   add(hl.includes("___gatsby"),                                         "Gatsby",    "fe-framework", "medium");
   // React — bundled builds reference react-dom in script filenames or inline chunks
