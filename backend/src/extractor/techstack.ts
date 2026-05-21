@@ -158,6 +158,13 @@ const WEBSITES: Record<string, string> = {
   // Hosting
   "Vercel": "vercel.com", "Netlify": "netlify.com", "GitHub Pages": "pages.github.com",
   "AWS CloudFront": "aws.amazon.com/cloudfront", "Fastly": "fastly.com",
+  // BaaS
+  "Supabase": "supabase.com", "Firebase": "firebase.google.com",
+  "Appwrite": "appwrite.io", "PocketBase": "pocketbase.io",
+  // API
+  "GraphQL": "graphql.org",
+  // State
+  "React Query": "tanstack.com/query",
 };
 
 // ── Main extractor ─────────────────────────────────────────────────────────
@@ -565,7 +572,17 @@ export async function extractTechStack(
     ];
     const appSrcs = srcUrls
       .filter((u) => !skipDomains.some((d) => u.includes(d)))
-      .slice(0, 5); // max 5 files
+      .sort((a, b) => {
+        // Prefer app bundle filenames — more likely to contain library code
+        const score = (u: string) => {
+          const name = u.split("?")[0].split("/").pop() ?? "";
+          if (/\b(main|app|bundle|index|vendor)\b/.test(name)) return 3;
+          if (/chunk|runtime|framework/.test(name)) return 2;
+          return 1;
+        };
+        return score(b) - score(a);
+      })
+      .slice(0, 5);
 
     const chunks = await Promise.all(
       appSrcs.map(async (url) => {
@@ -648,6 +665,77 @@ export async function extractTechStack(
 
   add(!seen.has("Framer Motion") && (inB("framer-motion") || inB("framermotion")),
     "Framer Motion", "fe-animation", "medium");
+
+  // ── CSS File Scanning ────────────────────────────────────────────────────────
+  // Fetch stylesheet files and scan class patterns — more reliable than filename
+  // guessing. Tailwind injects --tw- CSS vars; Bootstrap emits .container/.row/
+  // .col-md-; MUI emits .MuiButton-root etc. All survive production builds.
+  let cssText = "";
+  try {
+    const cssUrls = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("link[rel='stylesheet'][href]"))
+        .map((l) => (l as HTMLLinkElement).href)
+        .filter(Boolean)
+    ).catch(() => [] as string[]);
+
+    // Include CDN-hosted CSS — that's where Bootstrap/Bulma etc. live.
+    // Only skip font CDNs since we already detect fonts via HTML.
+    const skipCssDomains = ["fonts.googleapis.com", "fonts.gstatic.com"];
+    const appCss = cssUrls
+      .filter((u) => !skipCssDomains.some((d) => u.includes(d)))
+      .slice(0, 4);
+
+    const cssChunks = await Promise.all(
+      appCss.map(async (url) => {
+        try {
+          const resp = await page.request.fetch(url, { timeout: 5_000 });
+          if (resp.ok()) return (await resp.text()).slice(0, 60_000);
+        } catch {}
+        return "";
+      })
+    );
+    cssText = cssChunks.join(" ");
+  } catch {}
+
+  const cc    = cssText.toLowerCase();
+  const inCSS = (t: string) => cc.includes(t);
+
+  // Tailwind — --tw- custom properties are injected by preflight/utilities layer
+  add(!seen.has("Tailwind CSS") && (
+    inCSS("--tw-ring-color") || inCSS("--tw-shadow") ||
+    inCSS("--tw-ring-offset") || inCSS("tailwindcss")
+  ), "Tailwind CSS", "fe-styling", "high");
+
+  // Bootstrap — characteristic grid + component class patterns
+  add(!seen.has("Bootstrap") && (
+    (inCSS(".container") && inCSS(".row") && inCSS(".col-md-")) ||
+    inCSS(".btn-primary") || inCSS(".navbar-expand") || inCSS("bootstrap")
+  ), "Bootstrap", "fe-ui", "high");
+
+  // Material UI — MUI class patterns emitted into CSS
+  add(!seen.has("Material UI") && (
+    inCSS(".muibutton-root") || inCSS(".muibox-root") || inCSS(".muipaper-root")
+  ), "Material UI", "fe-ui", "high");
+
+  // Ant Design
+  add(!seen.has("Ant Design") && (
+    inCSS(".ant-btn") || inCSS(".ant-layout") || inCSS(".ant-form")
+  ), "Ant Design", "fe-ui", "high");
+
+  // Bulma — catches self-hosted Bulma not on a CDN URL
+  add(!seen.has("Bulma") && (
+    (inCSS(".button.is-primary") || inCSS(".column.is-")) || inCSS("bulma")
+  ), "Bulma", "fe-ui", "high");
+
+  // Font Awesome — @font-face name in CSS is definitive
+  add(!seen.has("Font Awesome") && (
+    inCSS("font awesome") || inCSS("font-awesome") || inCSS("fontawesome") ||
+    inCSS("fa-solid") || inCSS('"font awesome 5"') || inCSS('"font awesome 6"')
+  ), "Font Awesome", "fe-styling", "high");
+
+  // Animate.css — specific keyframe + utility class combination
+  add(!seen.has("Animate.css") && inCSS("animate__") && inCSS("@keyframes bounce"),
+    "Animate.css", "fe-styling", "high");
 
   // ── Response header detection (backend stack) ─────────────────────────────
   const server    = (headers["server"]       ?? "").toLowerCase();
@@ -830,6 +918,30 @@ export async function extractTechStack(
   add(inRef("sentry") || hl.includes("sentry.io"),                   "Sentry",             "analytics",  "medium");
   add(inRef("datadoghq") || inRef("datadog"),                        "Datadog RUM",        "analytics",  "medium");
   add(inRef("newrelic") || inRef("nr-data"),                         "New Relic",          "analytics",  "medium");
+
+  // ── Backend service URLs referenced in HTML/JS ─────────────────────────────
+  // API endpoint domains and URL patterns reveal backend services even when
+  // response headers are stripped by Cloudflare or another proxy.
+  add(!seen.has("Supabase") && (hl.includes(".supabase.co") || hl.includes("supabase-js")),
+    "Supabase", "be-framework", "medium");
+  add(!seen.has("Firebase") && (
+    hl.includes("firebase") || hl.includes("firestore") ||
+    hl.includes("googleapis.com/identitytoolkit") || hl.includes("firebaseapp.com")
+  ), "Firebase", "be-framework", "medium");
+  add(!seen.has("Appwrite") && hl.includes("appwrite.io"),
+    "Appwrite", "be-framework", "medium");
+  add(!seen.has("PocketBase") && hl.includes("pocketbase"),
+    "PocketBase", "be-framework", "medium");
+  // WordPress REST API endpoint in page source is definitive
+  add(!seen.has("WordPress") && hl.includes("/wp-json/"),
+    "WordPress", "cms", "high");
+  // AWS origins (CloudFront distribution or S3 bucket in URLs)
+  add(!seen.has("AWS CloudFront") && (
+    hl.includes(".cloudfront.net") || hl.includes(".amazonaws.com")
+  ), "AWS CloudFront", "hosting", "medium");
+  // GraphQL API hint — many modern backends expose /graphql
+  add(hl.includes('"/graphql"') || hl.includes("'/graphql'") || hl.includes("graphql-ws"),
+    "GraphQL", "be-framework", "medium");
 
   return { items };
 }
