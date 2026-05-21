@@ -87,62 +87,51 @@ const WEBSITES: Record<string, string> = {
   "React": "react.dev", "Next.js": "nextjs.org", "Vue.js": "vuejs.org",
   "Nuxt": "nuxt.com", "Angular": "angular.io", "Svelte": "svelte.dev",
   "Gatsby": "gatsbyjs.com", "Remix": "remix.run", "Astro": "astro.build",
-  "SolidJS": "solidjs.com", "Qwik": "qwik.dev",
-  // UI libraries
-  "Material UI": "mui.com", "Ant Design": "ant.design", "Chakra UI": "chakra-ui.com",
-  "Bootstrap": "getbootstrap.com", "Radix UI": "radix-ui.com", "shadcn/ui": "ui.shadcn.com",
-  "Headless UI": "headlessui.com", "Mantine": "mantine.dev", "Bulma": "bulma.io",
-  "Semantic UI": "semantic-ui.com",
-  // Styling
-  "Tailwind CSS": "tailwindcss.com", "Styled Components": "styled-components.com",
-  "Emotion": "emotion.sh", "CSS Modules": "github.com/css-modules",
-  "Sass / SCSS": "sass-lang.com", "Less": "lesscss.org",
-  // Common libraries
+  "SolidJS": "solidjs.com",
   "jQuery": "jquery.com", "jQuery UI": "jqueryui.com",
   "Alpine.js": "alpinejs.dev", "htmx": "htmx.org",
-  "Lodash": "lodash.com", "Underscore.js": "underscorejs.org", "Moment.js": "momentjs.com",
-  "D3.js": "d3js.org", "Chart.js": "chartjs.org", "Highcharts": "highcharts.com",
-  "Leaflet": "leafletjs.com",
+  // UI libraries
+  "Material UI": "mui.com", "Ant Design": "ant.design", "Chakra UI": "chakra-ui.com",
+  "Bootstrap": "getbootstrap.com", "Radix UI": "radix-ui.com",
+  "Mantine": "mantine.dev", "Bulma": "bulma.io", "Semantic UI": "semantic-ui.com",
   "Foundation": "get.foundation",
   // Styling
+  "Tailwind CSS": "tailwindcss.com", "Styled Components": "styled-components.com",
+  "Emotion": "emotion.sh", "Sass / SCSS": "sass-lang.com",
   "Google Fonts": "fonts.google.com", "Font Awesome": "fontawesome.com",
-  "Ionicons": "ionic.io/ionicons", "Animate.css": "animate.style",
+  "Animate.css": "animate.style",
   // State management
   "Redux": "redux.js.org", "MobX": "mobx.js.org", "Zustand": "zustand-demo.pmnd.rs",
   "Pinia": "pinia.vuejs.org", "Vuex": "vuex.vuejs.org", "Jotai": "jotai.org",
-  "Recoil": "recoiljs.org",
-  // Animation & 3D
+  "Recoil": "recoiljs.org", "React Query": "tanstack.com/query",
+  // Animation & data viz
   "GSAP": "greensock.com", "Three.js": "threejs.org", "Framer Motion": "framer.com/motion",
   "Lottie": "airbnb.io/lottie", "Swiper": "swiperjs.com", "AOS": "michalsnik.github.io/aos",
-  "Anime.js": "animejs.com",
+  "Anime.js": "animejs.com", "D3.js": "d3js.org", "Chart.js": "chartjs.org",
+  "Highcharts": "highcharts.com", "Leaflet": "leafletjs.com",
   // Build tools
   "Vite": "vitejs.dev", "Webpack": "webpack.js.org", "Parcel": "parceljs.org",
-  "esbuild": "esbuild.github.io", "Rollup": "rollupjs.org", "Turbopack": "turbo.build",
-  "TypeScript": "typescriptlang.org", "PWA": "web.dev/progressive-web-apps",
-  "Workbox": "developer.chrome.com/docs/workbox",
+  "Turbopack": "turbo.build", "TypeScript": "typescriptlang.org",
+  "PWA": "web.dev/progressive-web-apps", "Workbox": "developer.chrome.com/docs/workbox",
   // Backend languages
   "PHP": "php.net", "Python": "python.org", "Ruby": "ruby-lang.org",
   "Java": "java.com", ".NET / C#": "dotnet.microsoft.com", "Go": "go.dev",
-  "Rust": "rust-lang.org",
   // Backend runtimes
-  "Node.js": "nodejs.org", "Deno": "deno.land", "Bun": "bun.sh",
+  "Node.js": "nodejs.org",
   // Backend frameworks
   "Express": "expressjs.com", "Django": "djangoproject.com", "Ruby on Rails": "rubyonrails.org",
   "Laravel": "laravel.com", "Spring Boot": "spring.io", "ASP.NET": "asp.net",
-  "FastAPI": "fastapi.tiangolo.com", "Flask": "flask.palletsprojects.com",
-  "Symfony": "symfony.com", "CodeIgniter": "codeigniter.com", "Koa": "koajs.com",
-  "Fastify": "fastify.io",
   // Web servers
-  "Nginx": "nginx.org", "Apache": "apache.org", "Cloudflare": "cloudflare.com",
+  "Nginx": "nginx.org", "Apache": "apache.org",
   "Microsoft IIS": "iis.net", "LiteSpeed": "litespeedtech.com", "Caddy": "caddyserver.com",
   // CMS / Platform
   "WordPress": "wordpress.org", "Ghost": "ghost.org", "Drupal": "drupal.org",
   "Joomla": "joomla.org", "Contentful": "contentful.com", "Sanity": "sanity.io",
   "Strapi": "strapi.io", "Squarespace": "squarespace.com", "Wix": "wix.com",
-  "Webflow": "webflow.com", "Framer": "framer.com", "Notion": "notion.so",
+  "Webflow": "webflow.com", "Framer": "framer.com",
   // E-commerce
   "Shopify": "shopify.com", "WooCommerce": "woocommerce.com", "Magento": "magento.com",
-  "BigCommerce": "bigcommerce.com", "PrestaShop": "prestashop.com",
+  "BigCommerce": "bigcommerce.com",
   // Tag managers
   "Google Tag Manager": "tagmanager.google.com", "Segment": "segment.com",
   // Analytics
@@ -156,15 +145,12 @@ const WEBSITES: Record<string, string> = {
   "Zendesk": "zendesk.com", "HubSpot": "hubspot.com", "Tawk.to": "tawk.to",
   "Freshchat": "freshchat.com", "LiveChat": "livechat.com",
   // Hosting
-  "Vercel": "vercel.com", "Netlify": "netlify.com", "GitHub Pages": "pages.github.com",
+  "Vercel": "vercel.com", "Netlify": "netlify.com",
   "AWS CloudFront": "aws.amazon.com/cloudfront", "Fastly": "fastly.com",
-  // BaaS
+  "Cloudflare": "cloudflare.com",
+  // BaaS / API
   "Supabase": "supabase.com", "Firebase": "firebase.google.com",
-  "Appwrite": "appwrite.io", "PocketBase": "pocketbase.io",
-  // API
-  "GraphQL": "graphql.org",
-  // State
-  "React Query": "tanstack.com/query",
+  "Appwrite": "appwrite.io", "GraphQL": "graphql.org",
 };
 
 // ── Main extractor ─────────────────────────────────────────────────────────
@@ -318,17 +304,12 @@ export async function extractTechStack(
       sass:             hasLink(".scss") || hasLink(".sass"),
       googleFonts:      hasLink("fonts.googleapis.com"),
       fontAwesome:      hasLink("font-awesome") || hasLink("fontawesome") || hasScript("font-awesome") || hasScript("fontawesome"),
-      ionicons:         hasScript("ionicons") || hasLink("ionicons"),
 
       // ── Data / Visualisation (fe-animation) ───────────────────────────
       d3:          !!(w.d3),
       chartJs:     !!(w.Chart),
       highcharts:  !!(w.Highcharts),
       leaflet:     !!(w.L?.map),
-      // Utilities (add to fe-build for now)
-      lodash:      !!(w._ && w._.VERSION) || hasScript("lodash"),
-      underscore:  !!(w._ && w._.VERSION && !w._.chain) || hasScript("underscore"),
-      momentJs:    !!(w.moment) || hasScript("moment.min.js"),
 
       // ── Frontend: State Management ─────────────────────────────────────
       redux: !!(
@@ -471,7 +452,6 @@ export async function extractTechStack(
     add(d.sass,                            "Sass / SCSS",       "fe-styling", "medium");
     add(d.googleFonts,                     "Google Fonts",      "fe-styling", "high");
     add(d.fontAwesome,                     "Font Awesome",      "fe-styling", "high");
-    add(d.ionicons,                        "Ionicons",          "fe-styling", "high");
 
     // State Management
     add(d.redux,   "Redux",  "fe-state", "high");
@@ -503,9 +483,6 @@ export async function extractTechStack(
     add(d.typescript, "TypeScript",     "fe-build", "high");
     add(d.pwa,        "PWA",            "fe-build", "high");
     add(d.workbox,    "Workbox",        "fe-build", "high");
-    add(d.lodash,     "Lodash",         "fe-build", "high");
-    add(d.underscore, "Underscore.js",  "fe-build", "high");
-    add(d.momentJs,   "Moment.js",      "fe-build", "high");
 
     // Platform: CMS
     add(d.wordpress,   "WordPress",   "cms", "high");
@@ -856,8 +833,6 @@ export async function extractTechStack(
       hl.includes('"fas fa-') || hl.includes('"far fa-') ||
       hl.includes('"fab fa-') || hl.includes('"fal fa-'),
       "Font Awesome", "fe-styling", "medium");
-  add(inRef("ionicons"),
-      "Ionicons", "fe-styling", "medium");
   add(hl.includes("cdn.tailwindcss.com") || hl.includes("tailwindcss") || hl.includes("--tw-ring"),
       "Tailwind CSS", "fe-styling", "medium");
   add(inRef("animate.css"),
@@ -897,9 +872,6 @@ export async function extractTechStack(
   // PWA
   add(hl.includes("serviceworker") || inRef("sw.js") || inRef("service-worker"), "PWA", "fe-build", "medium");
   add(inRef("workbox"),                                          "Workbox",       "fe-build", "medium");
-  add(inRef("lodash"),                                           "Lodash",        "fe-build", "medium");
-  add(inRef("underscore.js") || inRef("underscore.min.js"),     "Underscore.js", "fe-build", "medium");
-  add(inRef("moment.min.js") || inRef("moment.js") || inRef("/moment@"), "Moment.js", "fe-build", "medium");
 
   // ── Platform: CMS ─────────────────────────────────────────────────────────
   add(hl.includes("wp-content") || hl.includes("wp-includes"), "WordPress",  "cms", "medium");
@@ -936,13 +908,11 @@ export async function extractTechStack(
   add(!seen.has("Supabase") && (hl.includes(".supabase.co") || hl.includes("supabase-js")),
     "Supabase", "be-framework", "medium");
   add(!seen.has("Firebase") && (
-    hl.includes("firebase") || hl.includes("firestore") ||
-    hl.includes("googleapis.com/identitytoolkit") || hl.includes("firebaseapp.com")
+    hl.includes("firebaseapp.com") || hl.includes("firebase.google.com") ||
+    hl.includes("firestore.googleapis.com") || hl.includes("googleapis.com/identitytoolkit")
   ), "Firebase", "be-framework", "medium");
   add(!seen.has("Appwrite") && hl.includes("appwrite.io"),
     "Appwrite", "be-framework", "medium");
-  add(!seen.has("PocketBase") && hl.includes("pocketbase"),
-    "PocketBase", "be-framework", "medium");
   // WordPress REST API endpoint in page source is definitive
   add(!seen.has("WordPress") && hl.includes("/wp-json/"),
     "WordPress", "cms", "high");
