@@ -267,21 +267,36 @@ export async function extractTechStack(
       htmx:     !!(w.htmx),
 
       // ── Frontend: UI Libraries ─────────────────────────────────────────
-      materialUI: !!document.querySelector(".MuiBox-root,.MuiButton-root,.MuiTypography-root"),
-      antDesign:  !!document.querySelector(".ant-btn,.ant-layout,.ant-menu"),
-      chakraUI:   !!(w.chakra || document.querySelector("[data-theme][class*='chakra']")),
+      materialUI: !!document.querySelector(
+        ".MuiBox-root,.MuiButton-root,.MuiTypography-root,.MuiContainer-root,.MuiGrid-root,.MuiPaper-root"
+      ),
+      antDesign:  !!document.querySelector(".ant-btn,.ant-layout,.ant-menu,.ant-input,.ant-form,.ant-table"),
+      chakraUI:   !!(
+        w.chakra ||
+        document.querySelector(".chakra-button,.chakra-text,.chakra-box,.chakra-stack,.chakra-heading") ||
+        document.querySelector("[data-theme][class*='chakra'],[class*='chakra-']")
+      ),
       // Bootstrap: window global (v5) + DOM data-attributes (v4/v5) + CDN link
       bootstrap:  !!(w.bootstrap?.Modal) ||
                   !!document.querySelector("[data-bs-toggle],[data-bs-target],[data-toggle]") ||
                   hasLink("bootstrap") || hasScript("bootstrap.min.js") || hasScript("bootstrap.bundle"),
-      radixUI:    !!document.querySelector("[data-radix-popper-content-wrapper],[data-radix-scroll-area-viewport]"),
-      mantine:    !!document.querySelector(".mantine-Button-root,.mantine-Text-root") || hasScript("mantine"),
+      radixUI:    !!document.querySelector("[data-radix-popper-content-wrapper],[data-radix-scroll-area-viewport],[data-radix-collection-item]"),
+      mantine:    !!document.querySelector(".mantine-Button-root,.mantine-Text-root,.mantine-Paper-root") || hasScript("mantine"),
       bulma:      hasLink("bulma") || hasScript("bulma"),
       semanticUI: hasLink("semantic") || hasScript("semantic.min.js"),
 
       // ── Frontend: Styling ──────────────────────────────────────────────
       tailwind:         !!(w.tailwind) || hasLink("tailwind") || hasScript("tailwindcss") || hasScript("cdn.tailwindcss.com"),
-      tailwindFromStyle: styleContent.includes("tailwindcss") || styleContent.includes("--tw-"),
+      // Check Tailwind CSS variables injected into :root by the preflight/utilities layer
+      tailwindFromStyle: styleContent.includes("tailwindcss") || styleContent.includes("--tw-") ||
+        (() => {
+          try {
+            const s = getComputedStyle(document.documentElement);
+            return s.getPropertyValue("--tw-ring-color") !== "" ||
+                   s.getPropertyValue("--tw-shadow") !== "" ||
+                   s.getPropertyValue("--tw-ring-offset-shadow") !== "";
+          } catch { return false; }
+        })(),
       styledComponents: !!(w.__SC_ATTR__) || hasScript("styled-components"),
       emotion:          !!(w.__emotion_sheet__) || hasScript("@emotion"),
       sass:             hasLink(".scss") || hasLink(".sass"),
@@ -369,7 +384,9 @@ export async function extractTechStack(
       bigcommerce:  !!(w.BCData) || hasScript("bigcommerce.com"),
 
       // ── Marketing: Tag Managers ────────────────────────────────────────
-      gtm:     !!(w.google_tag_manager) || hasScript("googletagmanager.com"),
+      // dataLayer is created by GTM snippet before GTM even loads — very reliable
+      gtm:     !!(w.google_tag_manager || (Array.isArray(w.dataLayer) && w.dataLayer.length > 0)) ||
+               hasScript("googletagmanager.com"),
       segment: hasScript("cdn.segment.com") || hasScript("cdn.segment.io"),
 
       // ── Marketing: Analytics ───────────────────────────────────────────
@@ -526,6 +543,111 @@ export async function extractTechStack(
     add(d.vercel,  "Vercel",  "hosting", "medium");
     add(d.netlify, "Netlify", "hosting", "medium");
   }
+
+  // ── JS Bundle Content Scanning ───────────────────────────────────────────
+  // Fetch the actual JS files loaded by the page and scan their minified content.
+  // Production builds strip window.React/Vue/etc., but fingerprints like
+  // React.createElement, createStore, __webpack_require__ survive minification.
+  let bundleText = "";
+  try {
+    const srcUrls = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("script[src]"))
+        .map((s) => (s as HTMLScriptElement).src)
+        .filter(Boolean)
+    ).catch(() => [] as string[]);
+
+    // Skip third-party tracking/analytics — only scan app scripts
+    const skipDomains = [
+      "googletagmanager.com", "google-analytics.com", "connect.facebook.net",
+      "hotjar.com", "intercom.io", "embed.tawk.to", "clarity.ms",
+      "cdn.segment.com", "browser.sentry-cdn.com", "js-agent.newrelic.com",
+      "browser-sdk.datadoghq.com", "cdn.amplitude.com", "cdn.mixpanel.com",
+    ];
+    const appSrcs = srcUrls
+      .filter((u) => !skipDomains.some((d) => u.includes(d)))
+      .slice(0, 5); // max 5 files
+
+    const chunks = await Promise.all(
+      appSrcs.map(async (url) => {
+        try {
+          const resp = await page.request.fetch(url, { timeout: 5_000 });
+          if (resp.ok()) return (await resp.text()).slice(0, 80_000); // first 80 KB
+        } catch { /* network errors are expected */ }
+        return "";
+      })
+    );
+    bundleText = chunks.join(" ");
+  } catch { /* skip entirely if request API unavailable */ }
+
+  // Also scan inline <script> content (no src= attribute) — catches config blobs,
+  // framework init calls, and library references that never appear in external files.
+  const inlineScriptContent = [...html.matchAll(/<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi)]
+    .map((m) => m[1]).join(" ");
+  bundleText += " " + inlineScriptContent;
+
+  const bc  = bundleText.toLowerCase();
+  const inB = (t: string) => bc.includes(t);
+
+  // Frameworks
+  add(!seen.has("React") && (
+    inB("react.createelement") || inB("reactdom.render") || inB(".createroot(") ||
+    inB("react-dom") || /["']react["']/.test(bundleText)
+  ), "React", "fe-framework", "medium");
+
+  add(!seen.has("Vue.js") && (
+    inB("definecomponent") || inB("createapp(") || inB("vue.runtime") ||
+    inB("__vue_app__") || inB("new vue(") || inB("createvnode")
+  ), "Vue.js", "fe-framework", "medium");
+
+  add(!seen.has("Angular") && (
+    bundleText.includes("ɵfac") || bundleText.includes("ɵcmp") ||
+    inB("@angular/core") || inB("platformbrowserdynamic")
+  ), "Angular", "fe-framework", "medium");
+
+  add(!seen.has("Svelte") && (
+    inB("sveltecomponent") || inB("create_fragment")
+  ), "Svelte", "fe-framework", "medium");
+
+  // State management
+  add(!seen.has("Redux") && (
+    (inB("createstore") || inB("configurestore")) && inB("getstate") && inB("dispatch")
+  ), "Redux", "fe-state", "medium");
+
+  add(!seen.has("MobX") && (inB("makeobservable") || inB("makeautoobservable")),
+    "MobX", "fe-state", "medium");
+
+  add(!seen.has("Zustand") && inB("zustand"), "Zustand", "fe-state", "medium");
+
+  // TanStack / React Query
+  add(inB("queryclient") && (inB("usequery") || inB("querykey")),
+    "React Query", "fe-state", "medium");
+
+  // Build tools
+  add(!seen.has("Webpack") && (
+    /webpackChunk[A-Za-z_$]/.test(bundleText) ||
+    inB("__webpack_require__") || inB("webpackjsonp")
+  ), "Webpack", "fe-build", "medium");
+
+  add(!seen.has("TypeScript") && (
+    inB("__awaiter") || inB("__generator") || inB("tslib")
+  ), "TypeScript", "fe-build", "medium");
+
+  // Styling
+  add(!seen.has("Tailwind CSS") && (inB("--tw-") || inB("tailwindcss")),
+    "Tailwind CSS", "fe-styling", "medium");
+
+  add(!seen.has("Styled Components") && (inB("styledcomponent") || inB("styled-components")),
+    "Styled Components", "fe-styling", "medium");
+
+  add(!seen.has("Emotion") && (inB("@emotion") || inB("emotion-server")),
+    "Emotion", "fe-styling", "medium");
+
+  // Animation
+  add(!seen.has("GSAP") && (inB("gsap") || inB("tweenmax") || inB("tweenlite")),
+    "GSAP", "fe-animation", "medium");
+
+  add(!seen.has("Framer Motion") && (inB("framer-motion") || inB("framermotion")),
+    "Framer Motion", "fe-animation", "medium");
 
   // ── Response header detection (backend stack) ─────────────────────────────
   const server    = (headers["server"]       ?? "").toLowerCase();
