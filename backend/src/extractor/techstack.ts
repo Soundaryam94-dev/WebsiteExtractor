@@ -148,6 +148,7 @@ const WEBSITES: Record<string, string> = {
   "Hotjar": "hotjar.com", "Mixpanel": "mixpanel.com", "Plausible": "plausible.io",
   "PostHog": "posthog.com", "Amplitude": "amplitude.com", "Microsoft Clarity": "clarity.microsoft.com",
   "Heap": "heap.io", "FullStory": "fullstory.com",
+  "Sentry": "sentry.io", "Datadog RUM": "datadoghq.com", "New Relic": "newrelic.com",
   // Chat & Support
   "Intercom": "intercom.com", "Crisp": "crisp.chat", "Drift": "drift.com",
   "Zendesk": "zendesk.com", "HubSpot": "hubspot.com", "Tawk.to": "tawk.to",
@@ -196,20 +197,63 @@ export async function extractTechStack(
 
     return {
       // ── Frontend: Frameworks ───────────────────────────────────────────
-      next:       !!(w.__NEXT_DATA__ || document.querySelector("#__next")),
-      nuxt:       !!(w.__NUXT__ || document.querySelector("#__nuxt")),
-      gatsby:     !!(w.___gatsby || document.querySelector("#gatsby-focus-wrapper")),
-      remix:      !!(w.__remixContext),
-      astro:      !!document.querySelector("astro-island"),
-      react:      !!(w.React || document.querySelector("[data-reactroot],[data-react-helmet]")),
-      vue:        !!(w.__vue_app__ || w.Vue || document.querySelector("[data-v-app]")),
-      angular:    !!(w.ng || document.querySelector("[ng-version]")),
-      svelte:     !!(w.__svelte || hasScript("svelte")),
-      solidjs:    !!(w.Solid || hasScript("solid-js")),
-      // Common libraries that are frameworks in their own right
-      jquery:    !!(w.jQuery || (w.$ && w.$.fn && w.$.fn.jquery)),
-      alpineJs:  !!(w.Alpine),
-      htmx:      !!(w.htmx),
+      next:    !!(w.__NEXT_DATA__ || document.querySelector("#__next")),
+      nuxt:    !!(w.__NUXT__ || document.querySelector("#__nuxt")),
+      gatsby:  !!(w.___gatsby || document.querySelector("#gatsby-focus-wrapper")),
+      remix:   !!(w.__remixContext),
+      astro:   !!document.querySelector("astro-island"),
+      // React: window.React is stripped in production builds — use fiber inspection instead.
+      // React 16+ attaches __reactFiber$<key> to every rendered DOM node.
+      react: !!(
+        w.React ||
+        document.querySelector("[data-reactroot],[data-react-helmet]") ||
+        (() => {
+          try {
+            const candidates = [
+              document.getElementById("root"),
+              document.getElementById("app"),
+              document.getElementById("main"),
+              document.getElementById("__next"),
+              document.body?.firstElementChild,
+            ];
+            return candidates.some((el) =>
+              el && Object.keys(el).some(
+                (k) => k.startsWith("__reactFiber") ||
+                       k.startsWith("__reactInternalInstance") ||
+                       k.startsWith("__reactEvents")
+              )
+            );
+          } catch { return false; }
+        })()
+      ),
+      // Vue 2 exposes __vue__ on DOM nodes; Vue 3 sets __vue_app__ on mount target
+      vue: !!(
+        w.__vue_app__ || w.Vue ||
+        document.querySelector("[data-v-app]") ||
+        (() => {
+          try {
+            const el = document.getElementById("app") || document.body?.firstElementChild;
+            return !!(el && (el as any).__vue__);
+          } catch { return false; }
+        })()
+      ),
+      // Angular: ng-version attribute or window.ng
+      angular: !!(
+        w.ng ||
+        document.querySelector("[ng-version]") ||
+        document.querySelector("[_nghost-]") ||
+        document.querySelector("app-root")
+      ),
+      // Svelte: adds svelte- prefixed classes to elements
+      svelte: !!(
+        w.__svelte || hasScript("svelte") ||
+        document.querySelector("[class*='svelte-']")
+      ),
+      solidjs:  !!(w.Solid || hasScript("solid-js")),
+      // Common libraries
+      jquery:   !!(w.jQuery || (w.$ && w.$.fn && w.$.fn.jquery)),
+      alpineJs: !!(w.Alpine),
+      htmx:     !!(w.htmx),
 
       // ── Frontend: UI Libraries ─────────────────────────────────────────
       materialUI: !!document.querySelector(".MuiBox-root,.MuiButton-root,.MuiTypography-root"),
@@ -245,7 +289,16 @@ export async function extractTechStack(
       momentJs:    !!(w.moment) || hasScript("moment.min.js"),
 
       // ── Frontend: State Management ─────────────────────────────────────
-      redux:   !!(w.__REDUX_DEVTOOLS_EXTENSION__ || w.Redux || w.__redux_store__) || hasScript("redux"),
+      // Redux: devtools hook not present in prod — check webpackChunk for redux store shape
+      redux: !!(
+        w.Redux ||
+        w.__REDUX_DEVTOOLS_EXTENSION__ ||
+        hasScript("redux") ||
+        // Redux toolkit bundles as "redux" inside webpack chunks
+        (w.webpackChunk && (() => {
+          try { return JSON.stringify(w).includes('"getState"'); } catch { return false; }
+        })())
+      ),
       mobx:    !!(w.mobx) || hasScript("mobx"),
       pinia:   !!(w.__pinia),
       vuex:    !!(w.Vuex) || hasScript("vuex"),
@@ -302,6 +355,10 @@ export async function extractTechStack(
       clarity:    hasScript("clarity.ms"),
       heap:       !!(w.heap) || hasScript("heapanalytics.com"),
       fullstory:  !!(w.FS) || hasScript("fullstory.com"),
+      // Monitoring / Error tracking
+      sentry:     !!(w.Sentry) || hasScript("sentry.io") || hasScript("browser.sentry-cdn.com"),
+      datadog:    !!(w.DD_RUM) || hasScript("browser-sdk.datadoghq.com"),
+      newrelic:   !!(w.newrelic) || hasScript("js-agent.newrelic.com"),
 
       // ── Marketing: Chat & Support ──────────────────────────────────────
       intercom:    !!(w.Intercom) || hasScript("widget.intercom.io"),
@@ -420,6 +477,9 @@ export async function extractTechStack(
     add(d.clarity,   "Microsoft Clarity", "analytics", "high");
     add(d.heap,      "Heap",              "analytics", "high");
     add(d.fullstory, "FullStory",         "analytics", "high");
+    add(d.sentry,    "Sentry",            "analytics", "high");
+    add(d.datadog,   "Datadog RUM",       "analytics", "high");
+    add(d.newrelic,  "New Relic",         "analytics", "high");
 
     // Marketing: Chat & Support
     add(d.intercom,    "Intercom",  "chat", "high");
@@ -490,15 +550,23 @@ export async function extractTechStack(
   const hl = html.toLowerCase();
 
   // ── Frontend Frameworks ───────────────────────────────────────────────────
-  add(hl.includes("__next_data__"),               "Next.js",   "fe-framework", "medium");
-  add(hl.includes("__nuxt"),                      "Nuxt",      "fe-framework", "medium");
-  add(hl.includes("___gatsby"),                   "Gatsby",    "fe-framework", "medium");
+  add(hl.includes("__next_data__"),                                     "Next.js",   "fe-framework", "medium");
+  add(hl.includes("__nuxt"),                                            "Nuxt",      "fe-framework", "medium");
+  add(hl.includes("___gatsby"),                                         "Gatsby",    "fe-framework", "medium");
+  // React — bundled builds reference react-dom in script filenames or inline chunks
+  add(
+    inRef("react-dom") || inRef("react.production") || inRef("react.development") ||
+    hl.includes("_reactfiber") || hl.includes("__reactinternalinstance"),
+    "React", "fe-framework", "medium"
+  );
+  // Vue — bundled builds often include vue in chunk filenames
+  add(inRef("vue.runtime") || inRef("vue.min.js") || inRef("vue.esm"), "Vue.js", "fe-framework", "medium");
   // jQuery — any script src containing "jquery"
-  add(inRef("jquery"),                            "jQuery",    "fe-framework", "medium");
+  add(inRef("jquery"),                                                  "jQuery",    "fe-framework", "medium");
   // Alpine.js
-  add(inRef("alpine.js") || inRef("alpinejs"),    "Alpine.js", "fe-framework", "medium");
+  add(inRef("alpine.js") || inRef("alpinejs"),                          "Alpine.js", "fe-framework", "medium");
   // htmx
-  add(inRef("htmx"),                              "htmx",      "fe-framework", "medium");
+  add(inRef("htmx"),                                                    "htmx",      "fe-framework", "medium");
 
   // ── UI Libraries ──────────────────────────────────────────────────────────
   add(inRef("bootstrap.min.css") || inRef("bootstrap.css") ||
@@ -574,6 +642,10 @@ export async function extractTechStack(
   add(hl.includes("widget.intercom.io"),                             "Intercom",           "chat",       "medium");
   add(hl.includes("embed.tawk.to"),                                  "Tawk.to",            "chat",       "medium");
   add(hl.includes("client.crisp.chat"),                              "Crisp",              "chat",       "medium");
+  // Monitoring
+  add(inRef("sentry") || hl.includes("sentry.io"),                   "Sentry",             "analytics",  "medium");
+  add(inRef("datadoghq") || inRef("datadog"),                        "Datadog RUM",        "analytics",  "medium");
+  add(inRef("newrelic") || inRef("nr-data"),                         "New Relic",          "analytics",  "medium");
 
   return { items };
 }
