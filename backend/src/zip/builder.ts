@@ -5,6 +5,7 @@ import sharp from "sharp";
 import type { Response } from "express";
 import type { ScrapeResult } from "../scraper";
 import type { ImageCategory } from "../extractor/images";
+import { TECH_GROUPS } from "../extractor/techstack";
 
 export async function buildZip(data: ScrapeResult, res: Response): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -727,73 +728,90 @@ async function addImages(data: ScrapeResult, archive: archiver.Archiver): Promis
 // Tech Stack/
 // ─────────────────────────────────────────────
 
-const CATEGORY_LABELS: Record<string, string> = {
-  framework:  "Frontend Framework",
-  cms:        "CMS / Platform",
-  ecommerce:  "E-commerce",
-  analytics:  "Analytics & Tracking",
-  chat:       "Chat & Support",
-  ui:         "UI Library",
-  tagmanager: "Tag Manager",
-  hosting:    "Hosting & CDN",
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  framework:  "#6366f1",
-  cms:        "#22c55e",
-  ecommerce:  "#f97316",
-  analytics:  "#a855f7",
-  chat:       "#06b6d4",
-  ui:         "#eab308",
-  tagmanager: "#ec4899",
-  hosting:    "#64748b",
-};
-
 function generateTechStackJson(data: ScrapeResult): string {
-  const grouped: Record<string, object[]> = {};
-  for (const item of data.techStack.items) {
-    if (!grouped[item.category]) grouped[item.category] = [];
-    grouped[item.category].push({ name: item.name, confidence: item.confidence, website: item.website });
+  // Build grouped structure matching TECH_GROUPS layout
+  type Entry = { name: string; confidence: string; website?: string };
+  const out: Record<string, Record<string, Entry[]>> = {};
+
+  for (const group of TECH_GROUPS) {
+    const groupKey = group.label.toLowerCase().replace(/[^a-z]+/g, "_");
+    out[groupKey] = {};
+    for (const cat of group.categories) {
+      const items = data.techStack.items.filter((i) => i.category === cat.key);
+      if (items.length) {
+        const catKey = cat.label.toLowerCase().replace(/[^a-z]+/g, "_");
+        out[groupKey][catKey] = items.map((i) => ({
+          name: i.name,
+          confidence: i.confidence,
+          ...(i.website ? { website: i.website } : {}),
+        }));
+      }
+    }
+    // Remove empty groups
+    if (!Object.keys(out[groupKey]).length) delete out[groupKey];
   }
+
   return JSON.stringify({
     source: data.url,
     title: data.title,
     extractedAt: new Date().toISOString(),
     total: data.techStack.items.length,
-    ...grouped,
+    ...out,
   }, null, 2);
 }
 
 function generateTechStackHtml(data: ScrapeResult): string {
   const { techStack, title, url } = data;
   const shortTitle = siteShortName(url, title);
+  const total = techStack.items.length;
 
-  const categories = Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>;
-  const sections = categories.map((cat) => {
-    const items = techStack.items.filter((i) => i.category === cat);
-    if (!items.length) return "";
-    const color = CATEGORY_COLORS[cat];
-    const badges = items.map((item) => {
-      const conf = item.confidence === "high" ? "solid" : item.confidence === "medium" ? "dashed" : "dotted";
-      const link = item.website ? `<a href="https://${item.website}" style="color:inherit;text-decoration:none" target="_blank">` : "";
-      const close = item.website ? "</a>" : "";
-      return `<div class="badge" style="border-style:${conf};border-color:${color}40;color:${color}">
-        ${link}<span class="badge-name">${esc(item.name)}</span>${close}
-        <span class="badge-conf" style="color:${color}80">${item.confidence}</span>
-      </div>`;
-    }).join("\n");
+  // Build one block per TECH_GROUP that has at least one detected item
+  const groupBlocks = TECH_GROUPS.map((group) => {
+    const catBlocks = group.categories.map((cat) => {
+      const items = techStack.items.filter((i) => i.category === cat.key);
+      if (!items.length) return "";
+      const badges = items.map((item) => {
+        const borderStyle = item.confidence === "high" ? "solid" : item.confidence === "medium" ? "dashed" : "dotted";
+        const inner = item.website
+          ? `<a href="https://${esc(item.website)}" style="color:inherit;text-decoration:none" target="_blank">${esc(item.name)}</a>`
+          : esc(item.name);
+        return `<span class="badge" style="border-style:${borderStyle};border-color:${group.color}33;color:${group.color}">${inner}</span>`;
+      }).join("");
+      return `
+        <div class="cat-row">
+          <div class="cat-label">${esc(cat.label)}</div>
+          <div class="badges">${badges}</div>
+        </div>`;
+    }).join("");
+
+    if (!catBlocks.trim()) return "";
+
+    const groupTotal = group.categories.reduce(
+      (n, cat) => n + techStack.items.filter((i) => i.category === cat.key).length, 0
+    );
+
     return `
-    <div class="section">
-      <div class="section-head">
-        <span class="dot" style="background:${color}"></span>
-        <h2 class="section-title">${CATEGORY_LABELS[cat]}</h2>
-        <span class="count" style="color:${color}">${items.length}</span>
+    <div class="group">
+      <div class="group-header" style="border-left-color:${group.color}">
+        <span class="group-title" style="color:${group.color}">${esc(group.label)}</span>
+        <span class="group-count" style="background:${group.color}18;color:${group.color}">${groupTotal}</span>
       </div>
-      <div class="badges">${badges}</div>
+      <div class="group-body">${catBlocks}
+      </div>
     </div>`;
   }).join("\n");
 
-  const total = techStack.items.length;
+  // Summary stats (one pill per group)
+  const summaryPills = TECH_GROUPS.map((g) => {
+    const n = g.categories.reduce(
+      (acc, cat) => acc + techStack.items.filter((i) => i.category === cat.key).length, 0
+    );
+    if (!n) return "";
+    return `<div class="stat-pill" style="border-color:${g.color}33">
+      <span class="stat-num" style="color:${g.color}">${n}</span>
+      <span class="stat-label">${esc(g.label)}</span>
+    </div>`;
+  }).join("\n  ");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -802,23 +820,34 @@ function generateTechStackHtml(data: ScrapeResult): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tech Stack — ${esc(shortTitle)}</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; }
-    .header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
-    .header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
-    .header p { font-size: 0.85rem; color: #71717a; margin: 0.25rem 0 0; }
-    .summary { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-    .stat { background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 0.75rem 1.25rem; font-size: 0.85rem; color: #a1a1aa; }
-    .stat strong { display: block; font-size: 1.4rem; font-weight: 700; color: #e4e4e7; }
-    .section { margin-bottom: 1.75rem; background: #18181b; border: 1px solid #27272a; border-radius: 14px; overflow: hidden; }
-    .section-head { display: flex; align-items: center; gap: 0.6rem; padding: 0.85rem 1.25rem; border-bottom: 1px solid #27272a; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin: 0; flex: 1; color: #a1a1aa; }
-    .count { font-size: 0.72rem; font-weight: 700; }
-    .badges { display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 1rem 1.25rem; }
-    .badge { display: flex; align-items: center; gap: 0.5rem; border: 1px solid; border-radius: 8px; padding: 0.45rem 0.85rem; font-size: 0.85rem; background: #0f0f11; }
-    .badge-name { font-weight: 500; }
-    .badge-conf { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
-    .empty { color: #52525b; font-size: 0.85rem; padding: 1rem 1.25rem; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0f0f11; color: #e4e4e7; margin: 0; padding: 2rem; line-height: 1.5; }
+    a { color: inherit; }
+    .header { margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid #27272a; }
+    .header h1 { font-size: 1.5rem; margin: 0 0 0.2rem; }
+    .header p  { font-size: 0.82rem; color: #71717a; margin: 0; }
+    /* Summary row */
+    .summary { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 2rem; }
+    .total-pill { background: #18181b; border: 1px solid #3f3f46; border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.82rem; font-weight: 600; color: #e4e4e7; }
+    .stat-pill  { background: #18181b; border: 1px solid; border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.78rem; display: flex; align-items: center; gap: 0.4rem; }
+    .stat-num   { font-weight: 700; font-size: 0.88rem; }
+    .stat-label { color: #a1a1aa; }
+    /* Groups */
+    .group { margin-bottom: 1.5rem; border: 1px solid #27272a; border-radius: 14px; overflow: hidden; }
+    .group-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.8rem 1.25rem; background: #18181b; border-left: 3px solid; border-bottom: 1px solid #27272a; }
+    .group-title { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+    .group-count { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; }
+    .group-body  { padding: 0.5rem 0; }
+    /* Category rows */
+    .cat-row { display: flex; align-items: flex-start; gap: 1rem; padding: 0.65rem 1.25rem; border-bottom: 1px solid #1c1c1e; }
+    .cat-row:last-child { border-bottom: none; }
+    .cat-label { font-size: 0.75rem; color: #71717a; text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; padding-top: 0.25rem; min-width: 160px; }
+    /* Badges */
+    .badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .badge { display: inline-block; border: 1px solid; border-radius: 6px; padding: 0.25rem 0.7rem; font-size: 0.82rem; font-weight: 500; background: #0f0f11; }
+    /* Empty */
+    .empty { color: #52525b; font-size: 0.9rem; padding: 2rem; text-align: center; }
+    @media (max-width: 600px) { .cat-label { min-width: 110px; } body { padding: 1rem; } }
   </style>
 </head>
 <body>
@@ -828,14 +857,13 @@ function generateTechStackHtml(data: ScrapeResult): string {
   </div>
 
   <div class="summary">
-    <div class="stat"><strong>${total}</strong>Technologies detected</div>
-    ${Object.keys(CATEGORY_LABELS).map((cat) => {
-      const count = techStack.items.filter((i) => i.category === cat).length;
-      return count ? `<div class="stat"><strong style="color:${CATEGORY_COLORS[cat]}">${count}</strong>${CATEGORY_LABELS[cat]}</div>` : "";
-    }).join("\n    ")}
+    <div class="total-pill">${total} technologies detected</div>
+    ${summaryPills}
   </div>
 
-  ${total === 0 ? `<div class="empty">No technologies detected on this page.</div>` : sections}
+  ${total === 0
+    ? `<div class="empty">No technologies were detected on this page.<br>The site may use custom or obfuscated tooling.</div>`
+    : groupBlocks}
 </body>
 </html>`;
 }

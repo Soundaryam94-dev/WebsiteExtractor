@@ -189,12 +189,21 @@ export async function scrape(url: string): Promise<ScrapeResult> {
     }
     const html = await page.content().catch(() => "<html><body></body></html>");
 
+    // Capture response headers for backend tech detection (server, x-powered-by, set-cookie, etc.)
+    const responseHeaders: Record<string, string> = {};
+    if (response) {
+      const raw = response.headers();
+      for (const [k, v] of Object.entries(raw)) {
+        responseHeaders[k.toLowerCase()] = v;
+      }
+    }
+
     const [images, colors, typography, content, techStack] = await Promise.all([
       extractImages(page, url),
       extractColors(page, html),
       extractTypography(page, html),
       extractContent(page, html),
-      extractTechStack(page, html),
+      extractTechStack(page, html, responseHeaders),
     ]);
 
     return { url, title, html, images, capturedImages, colors, typography, content, techStack };

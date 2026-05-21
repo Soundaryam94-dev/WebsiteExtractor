@@ -1,15 +1,75 @@
 import type { Page } from "playwright";
 
+// ── Category keys ──────────────────────────────────────────────────────────
 export type TechCategory =
-  | "framework"
-  | "cms"
-  | "ecommerce"
-  | "analytics"
-  | "chat"
-  | "ui"
-  | "tagmanager"
-  | "hosting";
+  | "fe-framework"   // Frontend → Frameworks & Libraries
+  | "fe-ui"          // Frontend → UI Component Libraries
+  | "fe-styling"     // Frontend → Styling Tools
+  | "fe-state"       // Frontend → State Management
+  | "fe-animation"   // Frontend → Animation & 3D
+  | "fe-build"       // Frontend → Build Tools
+  | "be-language"    // Backend  → Programming Languages
+  | "be-runtime"     // Backend  → Runtime Environments
+  | "be-framework"   // Backend  → Frameworks
+  | "be-server"      // Backend  → Web Servers
+  | "cms"            // Platform → CMS / Platform
+  | "ecommerce"      // Platform → E-commerce
+  | "tagmanager"     // Marketing → Tag Managers
+  | "analytics"      // Marketing → Analytics & Tracking
+  | "chat"           // Marketing → Chat & Support
+  | "hosting";       // Infrastructure → Hosting & CDN
 
+// ── Grouped layout (used by HTML generator) ────────────────────────────────
+export const TECH_GROUPS = [
+  {
+    label: "Frontend Technologies",
+    color: "#6366f1",
+    categories: [
+      { key: "fe-framework" as TechCategory, label: "Frameworks & Libraries" },
+      { key: "fe-ui"        as TechCategory, label: "UI Component Libraries" },
+      { key: "fe-styling"   as TechCategory, label: "Styling Tools" },
+      { key: "fe-state"     as TechCategory, label: "State Management" },
+      { key: "fe-animation" as TechCategory, label: "Animation & 3D" },
+      { key: "fe-build"     as TechCategory, label: "Build Tools" },
+    ],
+  },
+  {
+    label: "Backend Technologies",
+    color: "#10b981",
+    categories: [
+      { key: "be-language"  as TechCategory, label: "Programming Languages" },
+      { key: "be-runtime"   as TechCategory, label: "Runtime Environments" },
+      { key: "be-framework" as TechCategory, label: "Frameworks" },
+      { key: "be-server"    as TechCategory, label: "Web Servers" },
+    ],
+  },
+  {
+    label: "Platform & CMS",
+    color: "#f97316",
+    categories: [
+      { key: "cms"          as TechCategory, label: "CMS / Platform" },
+      { key: "ecommerce"    as TechCategory, label: "E-commerce" },
+    ],
+  },
+  {
+    label: "Analytics & Marketing",
+    color: "#a855f7",
+    categories: [
+      { key: "tagmanager"   as TechCategory, label: "Tag Managers" },
+      { key: "analytics"    as TechCategory, label: "Analytics & Tracking" },
+      { key: "chat"         as TechCategory, label: "Chat & Support" },
+    ],
+  },
+  {
+    label: "Infrastructure",
+    color: "#64748b",
+    categories: [
+      { key: "hosting"      as TechCategory, label: "Hosting & CDN" },
+    ],
+  },
+] as const;
+
+// ── Types ──────────────────────────────────────────────────────────────────
 export interface TechStackItem {
   name: string;
   category: TechCategory;
@@ -21,94 +81,80 @@ export interface TechStack {
   items: TechStackItem[];
 }
 
+// ── Website URLs ───────────────────────────────────────────────────────────
 const WEBSITES: Record<string, string> = {
-  "Next.js": "nextjs.org", "Nuxt": "nuxt.com", "Gatsby": "gatsbyjs.com",
-  "Remix": "remix.run", "Astro": "astro.build", "React": "react.dev",
-  "Vue.js": "vuejs.org", "Angular": "angular.io", "Svelte": "svelte.dev",
-  "WordPress": "wordpress.org", "Ghost": "ghost.org", "Squarespace": "squarespace.com",
-  "Wix": "wix.com", "Webflow": "webflow.com", "Drupal": "drupal.org",
-  "Joomla": "joomla.org", "Framer": "framer.com",
-  "Shopify": "shopify.com", "WooCommerce": "woocommerce.com",
-  "Google Tag Manager": "tagmanager.google.com",
+  // Frontend frameworks
+  "React": "react.dev", "Next.js": "nextjs.org", "Vue.js": "vuejs.org",
+  "Nuxt": "nuxt.com", "Angular": "angular.io", "Svelte": "svelte.dev",
+  "Gatsby": "gatsbyjs.com", "Remix": "remix.run", "Astro": "astro.build",
+  "SolidJS": "solidjs.com", "Qwik": "qwik.dev",
+  // UI libraries
+  "Material UI": "mui.com", "Ant Design": "ant.design", "Chakra UI": "chakra-ui.com",
+  "Bootstrap": "getbootstrap.com", "Radix UI": "radix-ui.com", "shadcn/ui": "ui.shadcn.com",
+  "Headless UI": "headlessui.com", "Mantine": "mantine.dev", "Bulma": "bulma.io",
+  "Semantic UI": "semantic-ui.com",
+  // Styling
+  "Tailwind CSS": "tailwindcss.com", "Styled Components": "styled-components.com",
+  "Emotion": "emotion.sh", "CSS Modules": "github.com/css-modules",
+  "Sass / SCSS": "sass-lang.com", "Less": "lesscss.org",
+  // State management
+  "Redux": "redux.js.org", "MobX": "mobx.js.org", "Zustand": "zustand-demo.pmnd.rs",
+  "Pinia": "pinia.vuejs.org", "Vuex": "vuex.vuejs.org", "Jotai": "jotai.org",
+  "Recoil": "recoiljs.org",
+  // Animation & 3D
+  "GSAP": "greensock.com", "Three.js": "threejs.org", "Framer Motion": "framer.com/motion",
+  "Lottie": "airbnb.io/lottie", "Swiper": "swiperjs.com", "AOS": "michalsnik.github.io/aos",
+  "Anime.js": "animejs.com",
+  // Build tools
+  "Vite": "vitejs.dev", "Webpack": "webpack.js.org", "Parcel": "parceljs.org",
+  "esbuild": "esbuild.github.io", "Rollup": "rollupjs.org", "Turbopack": "turbo.build",
+  // Backend languages
+  "PHP": "php.net", "Python": "python.org", "Ruby": "ruby-lang.org",
+  "Java": "java.com", ".NET / C#": "dotnet.microsoft.com", "Go": "go.dev",
+  "Rust": "rust-lang.org",
+  // Backend runtimes
+  "Node.js": "nodejs.org", "Deno": "deno.land", "Bun": "bun.sh",
+  // Backend frameworks
+  "Express": "expressjs.com", "Django": "djangoproject.com", "Ruby on Rails": "rubyonrails.org",
+  "Laravel": "laravel.com", "Spring Boot": "spring.io", "ASP.NET": "asp.net",
+  "FastAPI": "fastapi.tiangolo.com", "Flask": "flask.palletsprojects.com",
+  "Symfony": "symfony.com", "CodeIgniter": "codeigniter.com", "Koa": "koajs.com",
+  "Fastify": "fastify.io",
+  // Web servers
+  "Nginx": "nginx.org", "Apache": "apache.org", "Cloudflare": "cloudflare.com",
+  "Microsoft IIS": "iis.net", "LiteSpeed": "litespeedtech.com", "Caddy": "caddyserver.com",
+  // CMS / Platform
+  "WordPress": "wordpress.org", "Ghost": "ghost.org", "Drupal": "drupal.org",
+  "Joomla": "joomla.org", "Contentful": "contentful.com", "Sanity": "sanity.io",
+  "Strapi": "strapi.io", "Squarespace": "squarespace.com", "Wix": "wix.com",
+  "Webflow": "webflow.com", "Framer": "framer.com", "Notion": "notion.so",
+  // E-commerce
+  "Shopify": "shopify.com", "WooCommerce": "woocommerce.com", "Magento": "magento.com",
+  "BigCommerce": "bigcommerce.com", "PrestaShop": "prestashop.com",
+  // Tag managers
+  "Google Tag Manager": "tagmanager.google.com", "Segment": "segment.com",
+  // Analytics
   "Google Analytics": "analytics.google.com", "Facebook Pixel": "business.facebook.com",
-  "Hotjar": "hotjar.com", "Mixpanel": "mixpanel.com", "Segment": "segment.com",
-  "Plausible": "plausible.io", "PostHog": "posthog.com", "Amplitude": "amplitude.com",
-  "Microsoft Clarity": "clarity.microsoft.com",
+  "Hotjar": "hotjar.com", "Mixpanel": "mixpanel.com", "Plausible": "plausible.io",
+  "PostHog": "posthog.com", "Amplitude": "amplitude.com", "Microsoft Clarity": "clarity.microsoft.com",
+  "Heap": "heap.io", "FullStory": "fullstory.com",
+  // Chat & Support
   "Intercom": "intercom.com", "Crisp": "crisp.chat", "Drift": "drift.com",
   "Zendesk": "zendesk.com", "HubSpot": "hubspot.com", "Tawk.to": "tawk.to",
-  "Freshchat": "freshchat.com",
-  "Bootstrap": "getbootstrap.com", "Material UI": "mui.com", "Ant Design": "ant.design",
-  "Tailwind CSS": "tailwindcss.com",
-  "Vercel": "vercel.com", "Netlify": "netlify.com",
+  "Freshchat": "freshchat.com", "LiveChat": "livechat.com",
+  // Hosting
+  "Vercel": "vercel.com", "Netlify": "netlify.com", "GitHub Pages": "pages.github.com",
+  "AWS CloudFront": "aws.amazon.com/cloudfront", "Fastly": "fastly.com",
 };
 
-export async function extractTechStack(page: Page, html: string): Promise<TechStack> {
+// ── Main extractor ─────────────────────────────────────────────────────────
+export async function extractTechStack(
+  page: Page,
+  html: string,
+  headers: Record<string, string> = {}
+): Promise<TechStack> {
   const items: TechStackItem[] = [];
-
-  const d = await page.evaluate(() => {
-    const w = window as any;
-    const scripts = Array.from(document.querySelectorAll("script[src]"))
-      .map((s) => (s as HTMLScriptElement).src.toLowerCase());
-    const links = Array.from(document.querySelectorAll("link[href]"))
-      .map((l) => (l as HTMLLinkElement).href.toLowerCase());
-    const metaGen = (
-      document.querySelector('meta[name="generator"]')?.getAttribute("content") ?? ""
-    ).toLowerCase();
-    const has = (list: string[], term: string) => list.some((s) => s.includes(term));
-
-    return {
-      // Meta-frameworks (detected before base libraries)
-      next:         !!(w.__NEXT_DATA__ || document.querySelector("#__next")),
-      nuxt:         !!(w.__NUXT__ || document.querySelector("#__nuxt")),
-      gatsby:       !!(w.___gatsby || document.querySelector("#gatsby-focus-wrapper")),
-      remix:        !!(w.__remixContext),
-      astro:        !!document.querySelector("astro-island"),
-      // Base libraries
-      react:        !!(w.React || document.querySelector("[data-reactroot],[data-react-helmet]")),
-      vue:          !!(w.__vue_app__ || w.Vue || document.querySelector("[data-v-app]")),
-      angular:      !!(w.ng || document.querySelector("[ng-version]")),
-      svelte:       !!(w.__svelte),
-      // CMS / Platforms
-      wordpress:    metaGen.includes("wordpress") || has(scripts, "wp-content") || has(scripts, "wp-includes"),
-      ghost:        metaGen.includes("ghost") || has(scripts, "ghost.io"),
-      squarespace:  !!(w.Static?.SQUARESPACE_CONTEXT) || has(scripts, "squarespace.com"),
-      wix:          !!(w.wixBiSession) || has(scripts, ".wixstatic.com"),
-      webflow:      has(scripts, "webflow.com") || !!document.querySelector("[data-wf-page]"),
-      drupal:       !!(w.Drupal) || !!document.querySelector("[data-drupal-messages-fallback]"),
-      joomla:       metaGen.includes("joomla"),
-      framer:       has(scripts, "framer.com") || !!document.querySelector("[data-framer-component-type]"),
-      // E-commerce
-      shopify:      !!(w.Shopify) || has(scripts, "cdn.shopify.com"),
-      woocommerce:  !!(w.woocommerce_params) || !!document.querySelector(".woocommerce"),
-      // Tag Manager
-      gtm:          !!(w.google_tag_manager) || has(scripts, "googletagmanager.com"),
-      // Analytics
-      ga:           !!(w.gtag || w.ga) || has(scripts, "google-analytics.com"),
-      fbPixel:      !!(w.fbq) || has(scripts, "connect.facebook.net"),
-      hotjar:       !!(w.hj) || has(scripts, "hotjar.com"),
-      mixpanel:     !!(w.mixpanel) || has(scripts, "cdn.mixpanel.com"),
-      segment:      has(scripts, "cdn.segment.com") || has(scripts, "cdn.segment.io"),
-      plausible:    !!(w.plausible) || has(scripts, "plausible.io"),
-      posthog:      !!(w.posthog) || has(scripts, "posthog.com"),
-      amplitude:    !!(w.amplitude) || has(scripts, "cdn.amplitude.com"),
-      clarity:      has(scripts, "clarity.ms"),
-      // Chat
-      intercom:     !!(w.Intercom) || has(scripts, "widget.intercom.io"),
-      crisp:        !!(w.$crisp) || has(scripts, "client.crisp.chat"),
-      drift:        !!(w.drift) || has(scripts, "js.driftt.com"),
-      zendesk:      !!(w.zE) || has(scripts, "static.zdassets.com"),
-      hubspotChat:  !!(w.HubSpotConversations) || has(scripts, "js.hs-scripts.com"),
-      tawk:         !!(w.Tawk_API) || has(scripts, "embed.tawk.to"),
-      freshchat:    !!(w.fcWidget) || has(scripts, "snippets.freshchat.com"),
-      // UI Libraries
-      bootstrap:    has(links, "bootstrap") || has(scripts, "bootstrap.min.js"),
-      materialUI:   !!document.querySelector(".MuiBox-root,.MuiButton-root"),
-      antDesign:    !!document.querySelector(".ant-btn,.ant-layout"),
-      // Hosting
-      vercel:       has(scripts, "_vercel") || has(links, "_vercel"),
-      netlify:      !!document.querySelector("[data-netlify]") || has(scripts, "netlify"),
-    };
-  }).catch(() => null);
+  const seen = new Set<string>();
 
   const add = (
     cond: boolean,
@@ -116,78 +162,288 @@ export async function extractTechStack(page: Page, html: string): Promise<TechSt
     cat: TechCategory,
     conf: "high" | "medium" | "low"
   ) => {
-    if (cond && !items.some((i) => i.name === name)) {
+    if (cond && !seen.has(name)) {
+      seen.add(name);
       items.push({ name, category: cat, confidence: conf, website: WEBSITES[name] });
     }
   };
 
+  // ── Browser-side detection ───────────────────────────────────────────────
+  const d = await page.evaluate(() => {
+    const w = window as any;
+    const scripts = Array.from(document.querySelectorAll("script[src]"))
+      .map((s) => (s as HTMLScriptElement).src.toLowerCase());
+    const links = Array.from(document.querySelectorAll("link[href]"))
+      .map((l) => (l as HTMLLinkElement).href.toLowerCase());
+    const styleContent = Array.from(document.querySelectorAll("style"))
+      .map((s) => s.textContent ?? "").join(" ").toLowerCase();
+    const metaGen = (
+      document.querySelector('meta[name="generator"]')?.getAttribute("content") ?? ""
+    ).toLowerCase();
+    const has = (list: string[], term: string) => list.some((s) => s.includes(term));
+    const hasScript = (term: string) => has(scripts, term);
+    const hasLink = (term: string) => has(links, term);
+
+    return {
+      // ── Frontend: Frameworks ───────────────────────────────────────────
+      next:       !!(w.__NEXT_DATA__ || document.querySelector("#__next")),
+      nuxt:       !!(w.__NUXT__ || document.querySelector("#__nuxt")),
+      gatsby:     !!(w.___gatsby || document.querySelector("#gatsby-focus-wrapper")),
+      remix:      !!(w.__remixContext),
+      astro:      !!document.querySelector("astro-island"),
+      react:      !!(w.React || document.querySelector("[data-reactroot],[data-react-helmet]")),
+      vue:        !!(w.__vue_app__ || w.Vue || document.querySelector("[data-v-app]")),
+      angular:    !!(w.ng || document.querySelector("[ng-version]")),
+      svelte:     !!(w.__svelte || hasScript("svelte")),
+      solidjs:    !!(w.Solid || hasScript("solid-js")),
+
+      // ── Frontend: UI Libraries ─────────────────────────────────────────
+      materialUI: !!document.querySelector(".MuiBox-root,.MuiButton-root,.MuiTypography-root"),
+      antDesign:  !!document.querySelector(".ant-btn,.ant-layout,.ant-menu"),
+      chakraUI:   !!(w.chakra || document.querySelector("[data-theme][class*='chakra']")),
+      bootstrap:  hasLink("bootstrap") || hasScript("bootstrap.min.js") || hasScript("bootstrap.bundle"),
+      radixUI:    !!document.querySelector("[data-radix-popper-content-wrapper],[data-radix-scroll-area-viewport]"),
+      mantine:    !!document.querySelector(".mantine-Button-root,.mantine-Text-root") || hasScript("mantine"),
+      bulma:      hasLink("bulma") || hasScript("bulma"),
+      semanticUI: hasLink("semantic") || hasScript("semantic.min.js"),
+
+      // ── Frontend: Styling ──────────────────────────────────────────────
+      tailwind:         !!(w.tailwind) || hasLink("tailwind") || hasScript("tailwindcss") || hasScript("cdn.tailwindcss.com"),
+      tailwindFromStyle: styleContent.includes("tailwindcss") || styleContent.includes("--tw-"),
+      styledComponents: !!(w.__SC_ATTR__) || hasScript("styled-components"),
+      emotion:          !!(w.__emotion_sheet__) || hasScript("@emotion"),
+      sass:             hasLink(".scss") || hasLink(".sass"),
+
+      // ── Frontend: State Management ─────────────────────────────────────
+      redux:   !!(w.__REDUX_DEVTOOLS_EXTENSION__ || w.Redux || w.__redux_store__) || hasScript("redux"),
+      mobx:    !!(w.mobx) || hasScript("mobx"),
+      pinia:   !!(w.__pinia),
+      vuex:    !!(w.Vuex) || hasScript("vuex"),
+      jotai:   hasScript("jotai"),
+      recoil:  !!(w.__recoilKey__) || hasScript("recoil"),
+      zustand: hasScript("zustand"),
+
+      // ── Frontend: Animation & 3D ───────────────────────────────────────
+      gsap:         !!(w.gsap || w.TweenMax || w.TweenLite),
+      threeJs:      !!(w.THREE),
+      framerMotion: hasScript("framer-motion"),
+      lottie:       !!(w.lottie) || hasScript("lottie"),
+      swiper:       !!(w.Swiper) || hasScript("swiper"),
+      aos:          !!(w.AOS) || hasScript("aos.js"),
+      animeJs:      !!(w.anime) || hasScript("anime.min.js"),
+
+      // ── Frontend: Build Tools ──────────────────────────────────────────
+      vite:      !!(w.__vite_plugin_react_preamble_installed__) || hasScript("/@vite/") || hasScript("vite"),
+      webpack:   !!(w.webpackChunk || w.webpackJsonp) || hasScript("webpack"),
+      parcel:    hasScript("parcel"),
+      turbopack: hasScript("turbopack"),
+
+      // ── Platform: CMS ──────────────────────────────────────────────────
+      wordpress:    metaGen.includes("wordpress") || hasScript("wp-content") || hasScript("wp-includes"),
+      ghost:        metaGen.includes("ghost") || hasScript("ghost.io"),
+      drupal:       !!(w.Drupal) || !!document.querySelector("[data-drupal-messages-fallback]"),
+      joomla:       metaGen.includes("joomla"),
+      contentful:   hasScript("contentful"),
+      sanity:       hasScript("sanity.io"),
+      strapi:       hasScript("strapi"),
+      squarespace:  !!(w.Static?.SQUARESPACE_CONTEXT) || hasScript("squarespace.com"),
+      wix:          !!(w.wixBiSession) || hasScript(".wixstatic.com"),
+      webflow:      hasScript("webflow.com") || !!document.querySelector("[data-wf-page]"),
+      framer:       hasScript("framer.com") || !!document.querySelector("[data-framer-component-type]"),
+
+      // ── Platform: E-commerce ───────────────────────────────────────────
+      shopify:      !!(w.Shopify) || hasScript("cdn.shopify.com"),
+      woocommerce:  !!(w.woocommerce_params) || !!document.querySelector(".woocommerce"),
+      magento:      !!(w.require?.s?.contexts?._?.config?.deps?.includes?.("mage")),
+      bigcommerce:  !!(w.BCData) || hasScript("bigcommerce.com"),
+
+      // ── Marketing: Tag Managers ────────────────────────────────────────
+      gtm:     !!(w.google_tag_manager) || hasScript("googletagmanager.com"),
+      segment: hasScript("cdn.segment.com") || hasScript("cdn.segment.io"),
+
+      // ── Marketing: Analytics ───────────────────────────────────────────
+      ga:         !!(w.gtag || w.ga) || hasScript("google-analytics.com"),
+      fbPixel:    !!(w.fbq) || hasScript("connect.facebook.net"),
+      hotjar:     !!(w.hj) || hasScript("hotjar.com"),
+      mixpanel:   !!(w.mixpanel) || hasScript("cdn.mixpanel.com"),
+      plausible:  !!(w.plausible) || hasScript("plausible.io"),
+      posthog:    !!(w.posthog) || hasScript("posthog.com"),
+      amplitude:  !!(w.amplitude) || hasScript("cdn.amplitude.com"),
+      clarity:    hasScript("clarity.ms"),
+      heap:       !!(w.heap) || hasScript("heapanalytics.com"),
+      fullstory:  !!(w.FS) || hasScript("fullstory.com"),
+
+      // ── Marketing: Chat & Support ──────────────────────────────────────
+      intercom:    !!(w.Intercom) || hasScript("widget.intercom.io"),
+      crisp:       !!(w.$crisp) || hasScript("client.crisp.chat"),
+      drift:       !!(w.drift) || hasScript("js.driftt.com"),
+      zendesk:     !!(w.zE) || hasScript("static.zdassets.com"),
+      hubspotChat: !!(w.HubSpotConversations) || hasScript("js.hs-scripts.com"),
+      tawk:        !!(w.Tawk_API) || hasScript("embed.tawk.to"),
+      freshchat:   !!(w.fcWidget) || hasScript("snippets.freshchat.com"),
+      livechat:    !!(w.__lc) || hasScript("cdn.livechatinc.com"),
+
+      // ── Infrastructure: Hosting ────────────────────────────────────────
+      vercel:  hasScript("/_vercel/") || hasLink("/_vercel/"),
+      netlify: !!document.querySelector("[data-netlify]") || hasScript("netlify"),
+    };
+  }).catch(() => null);
+
+  // ── Apply browser detections ─────────────────────────────────────────────
   if (d) {
-    // Frameworks — meta-frameworks first, then base libraries
-    add(d.next,    "Next.js", "framework", "high");
-    add(d.nuxt,    "Nuxt",    "framework", "high");
-    add(d.gatsby,  "Gatsby",  "framework", "high");
-    add(d.remix,   "Remix",   "framework", "high");
-    add(d.astro,   "Astro",   "framework", "high");
-    // Only add base library if no meta-framework already covers it
-    add(d.react && !d.next && !d.gatsby && !d.remix, "React",   "framework", "high");
-    add(d.vue   && !d.nuxt,                          "Vue.js",  "framework", "high");
-    add(d.angular,                                   "Angular", "framework", "high");
-    add(d.svelte,                                    "Svelte",  "framework", "medium");
-
-    // CMS
-    add(d.wordpress,  "WordPress",   "cms", "high");
-    add(d.ghost,      "Ghost",       "cms", "high");
-    add(d.squarespace,"Squarespace", "cms", "high");
-    add(d.wix,        "Wix",         "cms", "high");
-    add(d.webflow,    "Webflow",     "cms", "high");
-    add(d.drupal,     "Drupal",      "cms", "high");
-    add(d.joomla,     "Joomla",      "cms", "high");
-    add(d.framer,     "Framer",      "cms", "high");
-
-    // E-commerce
-    add(d.shopify,    "Shopify",     "ecommerce", "high");
-    add(d.woocommerce,"WooCommerce", "ecommerce", "high");
-
-    // Tag Manager
-    add(d.gtm, "Google Tag Manager", "tagmanager", "high");
-
-    // Analytics
-    add(d.ga,       "Google Analytics",  "analytics", "high");
-    add(d.fbPixel,  "Facebook Pixel",    "analytics", "high");
-    add(d.hotjar,   "Hotjar",            "analytics", "high");
-    add(d.mixpanel, "Mixpanel",          "analytics", "high");
-    add(d.segment,  "Segment",           "analytics", "high");
-    add(d.plausible,"Plausible",         "analytics", "high");
-    add(d.posthog,  "PostHog",           "analytics", "high");
-    add(d.amplitude,"Amplitude",         "analytics", "high");
-    add(d.clarity,  "Microsoft Clarity", "analytics", "high");
-
-    // Chat
-    add(d.intercom,   "Intercom",  "chat", "high");
-    add(d.crisp,      "Crisp",     "chat", "high");
-    add(d.drift,      "Drift",     "chat", "high");
-    add(d.zendesk,    "Zendesk",   "chat", "high");
-    add(d.hubspotChat,"HubSpot",   "chat", "high");
-    add(d.tawk,       "Tawk.to",   "chat", "high");
-    add(d.freshchat,  "Freshchat", "chat", "high");
+    // Frameworks — meta-frameworks first (they imply the base library)
+    add(d.next,    "Next.js", "fe-framework", "high");
+    add(d.nuxt,    "Nuxt",    "fe-framework", "high");
+    add(d.gatsby,  "Gatsby",  "fe-framework", "high");
+    add(d.remix,   "Remix",   "fe-framework", "high");
+    add(d.astro,   "Astro",   "fe-framework", "high");
+    add(d.react  && !d.next && !d.gatsby && !d.remix, "React",   "fe-framework", "high");
+    add(d.vue    && !d.nuxt,                          "Vue.js",  "fe-framework", "high");
+    add(d.angular,                                    "Angular", "fe-framework", "high");
+    add(d.svelte,                                     "Svelte",  "fe-framework", "high");
+    add(d.solidjs,                                    "SolidJS", "fe-framework", "high");
 
     // UI Libraries
-    add(d.bootstrap, "Bootstrap",   "ui", "medium");
-    add(d.materialUI,"Material UI", "ui", "high");
-    add(d.antDesign, "Ant Design",  "ui", "high");
+    add(d.materialUI, "Material UI", "fe-ui", "high");
+    add(d.antDesign,  "Ant Design",  "fe-ui", "high");
+    add(d.chakraUI,   "Chakra UI",   "fe-ui", "high");
+    add(d.bootstrap,  "Bootstrap",   "fe-ui", "high");
+    add(d.radixUI,    "Radix UI",    "fe-ui", "high");
+    add(d.mantine,    "Mantine",     "fe-ui", "high");
+    add(d.bulma,      "Bulma",       "fe-ui", "medium");
+    add(d.semanticUI, "Semantic UI", "fe-ui", "medium");
 
-    // Hosting
-    add(d.vercel,  "Vercel",  "hosting", "medium");
-    add(d.netlify, "Netlify", "hosting", "medium");
+    // Styling Tools
+    add(d.tailwind || d.tailwindFromStyle, "Tailwind CSS",      "fe-styling", "high");
+    add(d.styledComponents,                "Styled Components", "fe-styling", "high");
+    add(d.emotion,                         "Emotion",           "fe-styling", "high");
+    add(d.sass,                            "Sass / SCSS",       "fe-styling", "medium");
+
+    // State Management
+    add(d.redux,   "Redux",  "fe-state", "high");
+    add(d.mobx,    "MobX",   "fe-state", "high");
+    add(d.pinia,   "Pinia",  "fe-state", "high");
+    add(d.vuex,    "Vuex",   "fe-state", "high");
+    add(d.jotai,   "Jotai",  "fe-state", "medium");
+    add(d.recoil,  "Recoil", "fe-state", "medium");
+    add(d.zustand, "Zustand","fe-state", "medium");
+
+    // Animation & 3D
+    add(d.gsap,         "GSAP",          "fe-animation", "high");
+    add(d.threeJs,      "Three.js",      "fe-animation", "high");
+    add(d.framerMotion, "Framer Motion", "fe-animation", "high");
+    add(d.lottie,       "Lottie",        "fe-animation", "high");
+    add(d.swiper,       "Swiper",        "fe-animation", "high");
+    add(d.aos,          "AOS",           "fe-animation", "high");
+    add(d.animeJs,      "Anime.js",      "fe-animation", "high");
+
+    // Build Tools
+    add(d.vite,      "Vite",      "fe-build", "high");
+    add(d.webpack,   "Webpack",   "fe-build", "high");
+    add(d.parcel,    "Parcel",    "fe-build", "medium");
+    add(d.turbopack, "Turbopack", "fe-build", "medium");
+
+    // Platform: CMS
+    add(d.wordpress,   "WordPress",   "cms", "high");
+    add(d.ghost,       "Ghost",       "cms", "high");
+    add(d.drupal,      "Drupal",      "cms", "high");
+    add(d.joomla,      "Joomla",      "cms", "high");
+    add(d.contentful,  "Contentful",  "cms", "high");
+    add(d.sanity,      "Sanity",      "cms", "high");
+    add(d.strapi,      "Strapi",      "cms", "high");
+    add(d.squarespace, "Squarespace", "cms", "high");
+    add(d.wix,         "Wix",         "cms", "high");
+    add(d.webflow,     "Webflow",     "cms", "high");
+    add(d.framer,      "Framer",      "cms", "high");
+
+    // Platform: E-commerce
+    add(d.shopify,     "Shopify",     "ecommerce", "high");
+    add(d.woocommerce, "WooCommerce", "ecommerce", "high");
+    add(d.magento,     "Magento",     "ecommerce", "high");
+    add(d.bigcommerce, "BigCommerce", "ecommerce", "high");
+
+    // Marketing: Tag Managers
+    add(d.gtm,     "Google Tag Manager", "tagmanager", "high");
+    add(d.segment, "Segment",            "tagmanager", "high");
+
+    // Marketing: Analytics
+    add(d.ga,        "Google Analytics",  "analytics", "high");
+    add(d.fbPixel,   "Facebook Pixel",    "analytics", "high");
+    add(d.hotjar,    "Hotjar",            "analytics", "high");
+    add(d.mixpanel,  "Mixpanel",          "analytics", "high");
+    add(d.plausible, "Plausible",         "analytics", "high");
+    add(d.posthog,   "PostHog",           "analytics", "high");
+    add(d.amplitude, "Amplitude",         "analytics", "high");
+    add(d.clarity,   "Microsoft Clarity", "analytics", "high");
+    add(d.heap,      "Heap",              "analytics", "high");
+    add(d.fullstory, "FullStory",         "analytics", "high");
+
+    // Marketing: Chat & Support
+    add(d.intercom,    "Intercom",  "chat", "high");
+    add(d.crisp,       "Crisp",     "chat", "high");
+    add(d.drift,       "Drift",     "chat", "high");
+    add(d.zendesk,     "Zendesk",   "chat", "high");
+    add(d.hubspotChat, "HubSpot",   "chat", "high");
+    add(d.tawk,        "Tawk.to",   "chat", "high");
+    add(d.freshchat,   "Freshchat", "chat", "high");
+    add(d.livechat,    "LiveChat",  "chat", "high");
+
+    // Infrastructure: Hosting
+    add(d.vercel,  "Vercel",  "hosting", "high");
+    add(d.netlify, "Netlify", "hosting", "high");
   }
 
-  // HTML source fallbacks
+  // ── Response header detection (backend stack) ─────────────────────────────
+  const server    = (headers["server"]         ?? "").toLowerCase();
+  const powered   = (headers["x-powered-by"]   ?? "").toLowerCase();
+  const setCookie = (headers["set-cookie"]      ?? "").toLowerCase();
+  const generator = (headers["x-generator"]    ?? "").toLowerCase();
+
+  // Web Servers
+  add(server.includes("nginx"),                              "Nginx",         "be-server", "high");
+  add(server.includes("apache"),                             "Apache",        "be-server", "high");
+  add(server.includes("cloudflare") || !!headers["cf-ray"], "Cloudflare",    "be-server", "high");
+  add(server.includes("microsoft-iis"),                     "Microsoft IIS", "be-server", "high");
+  add(server.includes("litespeed"),                         "LiteSpeed",     "be-server", "high");
+  add(server.includes("caddy"),                             "Caddy",         "be-server", "high");
+
+  // Backend Frameworks → infer language + runtime
+  const isExpress = powered.includes("express");
+  const isDjango  = setCookie.includes("csrftoken") && !setCookie.includes("wordpress");
+  const isRails   = setCookie.includes("_rails_session") || powered.includes("rack");
+  const isLaravel = setCookie.includes("laravel_session");
+  const isSpring  = !!headers["x-application-context"];
+  const isAspNet  = powered.includes("asp.net") || !!headers["x-aspnet-version"];
+  const isPhp     = powered.includes("php") || setCookie.includes("phpsessid");
+  const isJava    = setCookie.includes("jsessionid") || isSpring;
+
+  add(isExpress, "Express",       "be-framework", "high");
+  add(isDjango,  "Django",        "be-framework", "high");
+  add(isRails,   "Ruby on Rails", "be-framework", "high");
+  add(isLaravel, "Laravel",       "be-framework", "high");
+  add(isSpring,  "Spring Boot",   "be-framework", "high");
+  add(isAspNet,  "ASP.NET",       "be-framework", "high");
+
+  // Runtime Environments
+  add(isExpress || powered.includes("node"), "Node.js", "be-runtime", "high");
+
+  // Programming Languages (inferred)
+  add(isPhp,                                           "PHP",        "be-language", "high");
+  add(isDjango || powered.includes("python"),          "Python",     "be-language", "high");
+  add(isRails,                                         "Ruby",       "be-language", "high");
+  add(isJava || isSpring,                              "Java",       "be-language", "high");
+  add(isAspNet,                                        ".NET / C#",  "be-language", "high");
+  add(isExpress || powered.includes("node"),           "JavaScript", "be-language", "high");
+  add(generator.includes("drupal"),                    "PHP",        "be-language", "high");
+
+  // ── HTML source fallbacks ─────────────────────────────────────────────────
   const h = html.toLowerCase();
-  add(h.includes("wp-content") || h.includes("wp-includes"), "WordPress", "cms", "medium");
-  add(h.includes("__next_data__"),                            "Next.js",   "framework", "medium");
-  add(h.includes("cdn.shopify.com"),                         "Shopify",   "ecommerce", "medium");
-  add(h.includes("googletagmanager.com"),                    "Google Tag Manager", "tagmanager", "medium");
+  add(h.includes("wp-content") || h.includes("wp-includes"), "WordPress",           "cms",         "medium");
+  add(h.includes("__next_data__"),                            "Next.js",             "fe-framework","medium");
+  add(h.includes("cdn.shopify.com"),                         "Shopify",             "ecommerce",   "medium");
+  add(h.includes("googletagmanager.com"),                    "Google Tag Manager",  "tagmanager",  "medium");
   add(h.includes("google-analytics.com") || h.includes("gtag("), "Google Analytics", "analytics", "medium");
+  add(h.includes("cdn.tailwindcss.com") || h.includes("--tw-"),   "Tailwind CSS",   "fe-styling",  "medium");
 
   return { items };
 }
