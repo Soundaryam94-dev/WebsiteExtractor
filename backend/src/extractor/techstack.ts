@@ -98,13 +98,15 @@ const WEBSITES: Record<string, string> = {
   "Emotion": "emotion.sh", "CSS Modules": "github.com/css-modules",
   "Sass / SCSS": "sass-lang.com", "Less": "lesscss.org",
   // Common libraries
-  "jQuery": "jquery.com", "Alpine.js": "alpinejs.dev", "htmx": "htmx.org",
+  "jQuery": "jquery.com", "jQuery UI": "jqueryui.com",
+  "Alpine.js": "alpinejs.dev", "htmx": "htmx.org",
   "Lodash": "lodash.com", "Underscore.js": "underscorejs.org", "Moment.js": "momentjs.com",
   "D3.js": "d3js.org", "Chart.js": "chartjs.org", "Highcharts": "highcharts.com",
   "Leaflet": "leafletjs.com",
+  "Foundation": "get.foundation",
   // Styling
   "Google Fonts": "fonts.google.com", "Font Awesome": "fontawesome.com",
-  "Ionicons": "ionic.io/ionicons",
+  "Ionicons": "ionic.io/ionicons", "Animate.css": "animate.style",
   // State management
   "Redux": "redux.js.org", "MobX": "mobx.js.org", "Zustand": "zustand-demo.pmnd.rs",
   "Pinia": "pinia.vuejs.org", "Vuex": "vuex.vuejs.org", "Jotai": "jotai.org",
@@ -477,14 +479,101 @@ export async function extractTechStack(
   add(isExpress || powered.includes("node"),           "JavaScript", "be-language", "high");
   add(generator.includes("drupal"),                    "PHP",        "be-language", "high");
 
-  // ── HTML source fallbacks ─────────────────────────────────────────────────
-  const h = html.toLowerCase();
-  add(h.includes("wp-content") || h.includes("wp-includes"), "WordPress",           "cms",         "medium");
-  add(h.includes("__next_data__"),                            "Next.js",             "fe-framework","medium");
-  add(h.includes("cdn.shopify.com"),                         "Shopify",             "ecommerce",   "medium");
-  add(h.includes("googletagmanager.com"),                    "Google Tag Manager",  "tagmanager",  "medium");
-  add(h.includes("google-analytics.com") || h.includes("gtag("), "Google Analytics", "analytics", "medium");
-  add(h.includes("cdn.tailwindcss.com") || h.includes("--tw-"),   "Tailwind CSS",   "fe-styling",  "medium");
+  // ── HTML source scanning ─────────────────────────────────────────────────
+  // Extract every script src and link href from raw HTML with regex.
+  // This catches self-hosted libraries (e.g. /js/jquery.min.js) that never hit a CDN URL.
+  const allRefs = [
+    ...[...html.matchAll(/(?:src|data-src)=["']([^"']+)["']/gi)].map((m) => m[1].toLowerCase()),
+    ...[...html.matchAll(/href=["']([^"']+)["']/gi)].map((m) => m[1].toLowerCase()),
+  ];
+  const inRef = (term: string) => allRefs.some((r) => r.includes(term));
+  const hl = html.toLowerCase();
+
+  // ── Frontend Frameworks ───────────────────────────────────────────────────
+  add(hl.includes("__next_data__"),               "Next.js",   "fe-framework", "medium");
+  add(hl.includes("__nuxt"),                      "Nuxt",      "fe-framework", "medium");
+  add(hl.includes("___gatsby"),                   "Gatsby",    "fe-framework", "medium");
+  // jQuery — any script src containing "jquery"
+  add(inRef("jquery"),                            "jQuery",    "fe-framework", "medium");
+  // Alpine.js
+  add(inRef("alpine.js") || inRef("alpinejs"),    "Alpine.js", "fe-framework", "medium");
+  // htmx
+  add(inRef("htmx"),                              "htmx",      "fe-framework", "medium");
+
+  // ── UI Libraries ──────────────────────────────────────────────────────────
+  add(inRef("bootstrap.min.css") || inRef("bootstrap.css") ||
+      inRef("bootstrap.min.js")  || inRef("bootstrap.bundle"), "Bootstrap",   "fe-ui", "medium");
+  add(inRef("jquery-ui") || inRef("jquery.ui"),                "jQuery UI",   "fe-ui", "medium");
+  add(inRef("bulma"),                                          "Bulma",       "fe-ui", "medium");
+  add(inRef("semantic.min.css") || inRef("semantic.css") ||
+      inRef("semantic.min.js"),                                "Semantic UI", "fe-ui", "medium");
+  add(inRef("foundation") && (inRef(".css") || inRef(".js")),  "Foundation",  "fe-ui", "medium");
+
+  // ── Styling Tools ─────────────────────────────────────────────────────────
+  add(hl.includes("fonts.googleapis.com") || hl.includes("fonts.gstatic.com"),
+      "Google Fonts", "fe-styling", "medium");
+  // Font Awesome — link/script src OR class usage (fa fa-*, fas fa-*, far fa-*)
+  add(inRef("font-awesome") || inRef("fontawesome") ||
+      hl.includes('"fa fa-') || hl.includes("'fa fa-") ||
+      hl.includes('"fas fa-') || hl.includes('"far fa-') ||
+      hl.includes('"fab fa-') || hl.includes('"fal fa-'),
+      "Font Awesome", "fe-styling", "medium");
+  add(inRef("ionicons"),
+      "Ionicons", "fe-styling", "medium");
+  add(hl.includes("cdn.tailwindcss.com") || hl.includes("tailwindcss") || hl.includes("--tw-ring"),
+      "Tailwind CSS", "fe-styling", "medium");
+  add(inRef("animate.css"),
+      "Animate.css", "fe-styling", "medium");
+
+  // ── Animation & Data Viz ──────────────────────────────────────────────────
+  add(inRef("gsap.min.js") || inRef("gsap.js") || inRef("tweenmax") || inRef("tweenlite"),
+      "GSAP", "fe-animation", "medium");
+  add(inRef("three.min.js") || inRef("three.js") || inRef("/three@"),
+      "Three.js", "fe-animation", "medium");
+  add(inRef("chart.min.js") || inRef("chart.js") || inRef("chartjs") || inRef("/chart@"),
+      "Chart.js", "fe-animation", "medium");
+  add(inRef("d3.min.js") || inRef("d3.js") || inRef("/d3@") || inRef("d3.v"),
+      "D3.js", "fe-animation", "medium");
+  add(inRef("highcharts"),
+      "Highcharts", "fe-animation", "medium");
+  add(inRef("swiper.min.js") || inRef("swiper.js") || inRef("swiper-bundle"),
+      "Swiper", "fe-animation", "medium");
+  add(inRef("aos.js") || inRef("aos.min.js"),
+      "AOS", "fe-animation", "medium");
+  add(inRef("lottie") && (inRef(".js") || inRef(".min")),
+      "Lottie", "fe-animation", "medium");
+  add(inRef("leaflet.js") || inRef("leaflet.min.js"),
+      "Leaflet", "fe-animation", "medium");
+
+  // ── Build / Utilities ─────────────────────────────────────────────────────
+  add(inRef("lodash"),                                           "Lodash",        "fe-build", "medium");
+  add(inRef("underscore.js") || inRef("underscore.min.js"),     "Underscore.js", "fe-build", "medium");
+  add(inRef("moment.min.js") || inRef("moment.js") || inRef("/moment@"), "Moment.js", "fe-build", "medium");
+
+  // ── Platform: CMS ─────────────────────────────────────────────────────────
+  add(hl.includes("wp-content") || hl.includes("wp-includes"), "WordPress",  "cms", "medium");
+  add(hl.includes("cdn.shopify.com"),                          "Shopify",    "ecommerce", "medium");
+
+  // ── Backend Language hint from URL patterns ────────────────────────────────
+  // If .php appears in form actions or XHR endpoint URLs it strongly suggests PHP
+  add(
+    !seen.has("PHP") && (
+      /action=["'][^"']+\.php["']/i.test(html) ||
+      /["'][^"']+\.php(\?[^"']*)?["']/i.test(html)
+    ),
+    "PHP", "be-language", "medium"
+  );
+
+  // ── Marketing ─────────────────────────────────────────────────────────────
+  add(hl.includes("googletagmanager.com"),                           "Google Tag Manager", "tagmanager", "medium");
+  add(hl.includes("google-analytics.com") || hl.includes("gtag("),  "Google Analytics",   "analytics",  "medium");
+  add(hl.includes("connect.facebook.net") || hl.includes("fbq("),   "Facebook Pixel",     "analytics",  "medium");
+  add(hl.includes("hotjar.com"),                                     "Hotjar",             "analytics",  "medium");
+  add(hl.includes("plausible.io"),                                   "Plausible",          "analytics",  "medium");
+  add(hl.includes("clarity.ms"),                                     "Microsoft Clarity",  "analytics",  "medium");
+  add(hl.includes("widget.intercom.io"),                             "Intercom",           "chat",       "medium");
+  add(hl.includes("embed.tawk.to"),                                  "Tawk.to",            "chat",       "medium");
+  add(hl.includes("client.crisp.chat"),                              "Crisp",              "chat",       "medium");
 
   return { items };
 }
