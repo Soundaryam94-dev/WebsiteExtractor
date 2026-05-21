@@ -118,6 +118,8 @@ const WEBSITES: Record<string, string> = {
   // Build tools
   "Vite": "vitejs.dev", "Webpack": "webpack.js.org", "Parcel": "parceljs.org",
   "esbuild": "esbuild.github.io", "Rollup": "rollupjs.org", "Turbopack": "turbo.build",
+  "TypeScript": "typescriptlang.org", "PWA": "web.dev/progressive-web-apps",
+  "Workbox": "developer.chrome.com/docs/workbox",
   // Backend languages
   "PHP": "php.net", "Python": "python.org", "Ruby": "ruby-lang.org",
   "Java": "java.com", ".NET / C#": "dotnet.microsoft.com", "Go": "go.dev",
@@ -316,10 +318,21 @@ export async function extractTechStack(
       animeJs:      !!(w.anime) || hasScript("anime.min.js"),
 
       // ── Frontend: Build Tools ──────────────────────────────────────────
-      vite:      !!(w.__vite_plugin_react_preamble_installed__) || hasScript("/@vite/") || hasScript("vite"),
-      webpack:   !!(w.webpackChunk || w.webpackJsonp) || hasScript("webpack"),
+      vite:   !!(w.__vite_plugin_react_preamble_installed__) || hasScript("/@vite/client") || hasScript("@vite/client"),
+      // Production Webpack names its global webpackChunk<AppName> (e.g. webpackChunkswiggy).
+      // Scan all window keys to catch any variant.
+      webpack: !!(
+        w.webpackJsonp || w.__webpack_require__ ||
+        Object.keys(w).some(k => k.startsWith("webpackChunk") || k === "webpackJsonp")
+      ),
       parcel:    hasScript("parcel"),
       turbopack: hasScript("turbopack"),
+      // TypeScript: tslib is the TS runtime helper; also check source-map .ts refs
+      typescript: hasScript("tslib") || hasLink("tslib") || hasScript(".ts?") ||
+                  !!document.querySelector('script[src$=".ts"]'),
+      // PWA / Service Worker
+      pwa:     !!(w.navigator?.serviceWorker),
+      workbox: hasScript("workbox"),
 
       // ── Platform: CMS ──────────────────────────────────────────────────
       wordpress:    metaGen.includes("wordpress") || hasScript("wp-content") || hasScript("wp-includes"),
@@ -434,14 +447,17 @@ export async function extractTechStack(
     add(d.highcharts,   "Highcharts",    "fe-animation", "high");
     add(d.leaflet,      "Leaflet",       "fe-animation", "high");
 
-    // Build Tools
-    add(d.vite,      "Vite",           "fe-build", "high");
-    add(d.webpack,   "Webpack",        "fe-build", "high");
-    add(d.parcel,    "Parcel",         "fe-build", "medium");
-    add(d.turbopack, "Turbopack",      "fe-build", "medium");
-    add(d.lodash,    "Lodash",         "fe-build", "high");
-    add(d.underscore,"Underscore.js",  "fe-build", "high");
-    add(d.momentJs,  "Moment.js",      "fe-build", "high");
+    // Build Tools & Runtimes
+    add(d.vite,       "Vite",           "fe-build", "high");
+    add(d.webpack,    "Webpack",        "fe-build", "high");
+    add(d.parcel,     "Parcel",         "fe-build", "medium");
+    add(d.turbopack,  "Turbopack",      "fe-build", "medium");
+    add(d.typescript, "TypeScript",     "fe-build", "high");
+    add(d.pwa,        "PWA",            "fe-build", "high");
+    add(d.workbox,    "Workbox",        "fe-build", "high");
+    add(d.lodash,     "Lodash",         "fe-build", "high");
+    add(d.underscore, "Underscore.js",  "fe-build", "high");
+    add(d.momentJs,   "Moment.js",      "fe-build", "high");
 
     // Platform: CMS
     add(d.wordpress,   "WordPress",   "cms", "high");
@@ -614,6 +630,19 @@ export async function extractTechStack(
       "Leaflet", "fe-animation", "medium");
 
   // ── Build / Utilities ─────────────────────────────────────────────────────
+  // Webpack: production apps name their global webpackChunk<AppName> — catch it in HTML
+  add(
+    /webpackChunk[A-Za-z_$]/.test(html) || hl.includes("__webpack_require__") || hl.includes("webpackjsonp"),
+    "Webpack", "fe-build", "medium"
+  );
+  // TypeScript: tslib runtime helper, or .ts source map references
+  add(
+    inRef("tslib") || hl.includes("tslib") || hl.includes("__awaiter") || hl.includes("__generator"),
+    "TypeScript", "fe-build", "medium"
+  );
+  // PWA
+  add(hl.includes("serviceworker") || inRef("sw.js") || inRef("service-worker"), "PWA", "fe-build", "medium");
+  add(inRef("workbox"),                                          "Workbox",       "fe-build", "medium");
   add(inRef("lodash"),                                           "Lodash",        "fe-build", "medium");
   add(inRef("underscore.js") || inRef("underscore.min.js"),     "Underscore.js", "fe-build", "medium");
   add(inRef("moment.min.js") || inRef("moment.js") || inRef("/moment@"), "Moment.js", "fe-build", "medium");
