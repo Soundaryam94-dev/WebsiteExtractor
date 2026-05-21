@@ -57,6 +57,7 @@ export default function ProcessingClient() {
   const [progress,   setProgress]   = useState(0);
   const [pageStatus, setPageStatus] = useState<PageStatus>("processing");
   const [error,      setError]      = useState("");
+  const [isWaking,   setIsWaking]   = useState(false);
   const blobUrlRef  = useRef<string | null>(null);
   const apiDoneRef  = useRef(false);
   const stepIndexRef = useRef(0);
@@ -88,21 +89,66 @@ export default function ProcessingClient() {
     });
 
     const controller = new AbortController();
+    const { signal } = controller;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/extract`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ url }),
-      signal:  controller.signal,
-    })
-      .then(async (res) => {
+    // Resolves after ms, or rejects immediately if already aborted
+    const sleep = (ms: number) => new Promise<void>((resolve, reject) => {
+      if (signal.aborted) { reject(new DOMException("Aborted", "AbortError")); return; }
+      const t = setTimeout(resolve, ms);
+      signal.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); }, { once: true });
+    });
+
+    // Fetch with a per-request timeout (independent of the main abort signal)
+    const fetchWithTimeout = async (fetchUrl: string, ms: number): Promise<Response> => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), ms);
+      try {
+        return await fetch(fetchUrl, { signal: ctrl.signal });
+      } finally {
+        clearTimeout(t);
+      }
+    };
+
+    const run = async () => {
+      // Wake the backend before extraction — Render free tier cold start takes 50+ seconds
+      const healthUrl = `${process.env.NEXT_PUBLIC_API_URL}/health`;
+      let serverReady = false;
+
+      try {
+        const r = await fetchWithTimeout(healthUrl, 6_000);
+        serverReady = r.ok;
+      } catch { /* cold — will retry below */ }
+
+      if (!serverReady && !signal.aborted) {
+        setIsWaking(true);
+        const deadline = Date.now() + 65_000;
+        while (!serverReady && Date.now() < deadline && !signal.aborted) {
+          try { await sleep(3_500); } catch { break; }
+          if (signal.aborted) break;
+          try {
+            const r = await fetchWithTimeout(healthUrl, 6_000);
+            serverReady = r.ok;
+          } catch { /* keep retrying */ }
+        }
+        setIsWaking(false);
+      }
+
+      if (signal.aborted) return;
+
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/extract`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ url }),
+          signal,
+        });
+
         if (!res.ok) {
           const json = await res.json().catch(() => ({}));
-          throw new Error(json.error ?? `Server error ${res.status}`);
+          throw new Error((json as { error?: string }).error ?? `Server error ${res.status}`);
         }
-        return res.blob();
-      })
-      .then((blob) => {
+
+        const blob = await res.blob();
         apiDoneRef.current = true;
         timers.forEach(clearTimeout);
         setSteps(Object.fromEntries(STEPS.map((s) => [s.id, "done"])));
@@ -118,14 +164,16 @@ export default function ProcessingClient() {
         const a = document.createElement("a");
         a.href = href; a.download = zipName; a.click();
         setPageStatus("success");
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         apiDoneRef.current = true;
         timers.forEach(clearTimeout);
         setError(err instanceof Error ? err.message : "Extraction failed");
         setPageStatus("error");
-      });
+      }
+    };
+
+    run();
 
     return () => { timers.forEach(clearTimeout); controller.abort(); };
   }, [url, router]);
@@ -214,6 +262,7 @@ export default function ProcessingClient() {
     const isAuth    = /401|403|login|auth|access denied|unauthorized/i.test(error);
     const isTimeout = /timeout|timed out|networkidle/i.test(error);
     const isRate    = /too many requests/i.test(error);
+    const isNetwork = /failed to fetch|network error|connection refused|load failed/i.test(error);
 
     const errorConfig = isBot ? {
       title:    "Site Blocked Our Request",
@@ -235,6 +284,11 @@ export default function ProcessingClient() {
       summary:  "You've made too many extractions recently.",
       tip:      "Please wait 15 minutes before trying again.",
       canRetry: false,
+    } : isNetwork ? {
+      title:    "Server Unavailable",
+      summary:  "Could not reach the extraction server.",
+      tip:      "The server may still be starting up. Wait 30 seconds and try again.",
+      canRetry: true,
     } : {
       title:    "Extraction Failed",
       summary:  error,
@@ -368,11 +422,17 @@ export default function ProcessingClient() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">{activeStep.label}</p>
-              <p className="text-xs text-zinc-500 mt-0.5">Step {doneCount + 1} of {STEPS.length}</p>
+              {isWaking ? (
+                <p className="text-xs text-amber-400/80 mt-0.5">Starting up server — this takes up to 60s on first use</p>
+              ) : (
+                <p className="text-xs text-zinc-500 mt-0.5">Step {doneCount + 1} of {STEPS.length}</p>
+              )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-              <span className="text-xs text-purple-400 font-medium">In progress</span>
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isWaking ? "bg-amber-400" : "bg-purple-400"}`} />
+              <span className={`text-xs font-medium ${isWaking ? "text-amber-400" : "text-purple-400"}`}>
+                {isWaking ? "Waking up" : "In progress"}
+              </span>
             </div>
           </div>
         </div>
@@ -389,7 +449,9 @@ export default function ProcessingClient() {
               style={{ width: `${progress || 2}%` }}
             />
           </div>
-          <p className="text-center text-xs text-zinc-600">Usually takes 15–30 seconds</p>
+          <p className="text-center text-xs text-zinc-600">
+            {isWaking ? "Server is cold — warming up, please wait…" : "Usually takes 15–30 seconds"}
+          </p>
         </div>
 
       </div>
