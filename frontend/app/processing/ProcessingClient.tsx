@@ -53,7 +53,6 @@ export default function ProcessingClient() {
   const [steps, setSteps] = useState<Record<string, StepState>>(
     Object.fromEntries(STEPS.map((s) => [s.id, "pending"]))
   );
-  const [, setActiveIndex] = useState(0);
   const [progress,   setProgress]   = useState(0);
   const [pageStatus, setPageStatus] = useState<PageStatus>("processing");
   const [error,      setError]      = useState("");
@@ -69,7 +68,6 @@ export default function ProcessingClient() {
     const markActive = (i: number) => {
       if (i >= STEPS.length) return;
       stepIndexRef.current = i;
-      setActiveIndex(i);
       setSteps((prev) => ({ ...prev, [STEPS[i].id]: "active" }));
       setProgress(Math.round((i / STEPS.length) * 90));
     };

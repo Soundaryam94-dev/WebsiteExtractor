@@ -1,5 +1,4 @@
 import archiver from "archiver";
-import axios from "axios";
 import path from "path";
 import sharp from "sharp";
 import type { Response } from "express";
@@ -693,16 +692,20 @@ async function addImages(data: ScrapeResult, archive: archiver.Archiver): Promis
     data.images.slice(0, 30).map(async ({ url, category }) => {
       if (count >= MAX) return;
       try {
-        const res = await axios.get<ArrayBuffer>(url, {
-          responseType: "arraybuffer",
-          timeout: 8_000,
-          maxContentLength: 5 * 1024 * 1024,
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 8_000);
+        const res = await fetch(url, {
+          signal: ctrl.signal,
           headers: { ...DL_HEADERS, Referer: new URL(url).origin },
         });
+        clearTimeout(t);
+        if (!res.ok) return;
         const ext = (path.extname(new URL(url).pathname).split("?")[0] || ".jpg").toLowerCase();
         if (!/\.(png|jpe?g|gif|webp|avif|svg|ico)$/.test(ext)) return;
         const folder = CATEGORY_FOLDER[category];
-        const raw = Buffer.from(res.data);
+        const arrayBuf = await res.arrayBuffer();
+        if (arrayBuf.byteLength > 5 * 1024 * 1024) return;
+        const raw = Buffer.from(arrayBuf);
 
         if (ext === ".svg") {
           archive.append(raw, { name: `${folder}/${slug()}.svg` });
