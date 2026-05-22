@@ -11,14 +11,13 @@ Paste any public URL and receive a structured ZIP file containing the site's col
 1. [What You Get](#what-you-get)
 2. [What I Implemented](#what-i-implemented)
 3. [How It Works](#how-it-works)
-4. [Local Development](#local-development)
-5. [Project Structure](#project-structure)
-6. [API Reference](#api-reference)
-7. [Extraction Modules](#extraction-modules)
-8. [Tech Stack](#tech-stack)
-9. [Deployment](#deployment)
-10. [Errors & Solutions](#errors--solutions)
-11. [Known Limitations](#known-limitations)
+4. [Local Development](docs/development.md)
+5. [API Reference](docs/api.md)
+6. [Extraction Modules](docs/extractors.md)
+7. [Tech Stack](#tech-stack)
+8. [Deployment](docs/deployment.md)
+9. [Errors & Solutions](#errors--solutions)
+10. [Known Limitations](#known-limitations)
 
 ---
 
@@ -329,180 +328,51 @@ User submits URL
 
 ## Local Development
 
-Two processes must run simultaneously.
+> Full setup guide with commands, environment files, project structure, and common issues: **[docs/development.md](docs/development.md)**
 
-### 1. Clone and install
+Quick start:
 
 ```bash
+# 1. Clone and install
 git clone https://github.com/Soundaryam94-dev/WebsiteExtractor.git
 cd WebsiteExtractor
-
-# Backend
 cd backend && npm install
-# Playwright downloads Chromium automatically via postinstall
-
-# Frontend
 cd ../frontend && npm install
-```
 
-### 2. Environment files
+# 2. Create backend/.env → PORT=4000 and FRONTEND_URL=http://localhost:3000
+# 3. Create frontend/.env.local → NEXT_PUBLIC_API_URL=http://localhost:4000
 
-**`backend/.env`**
-```
-PORT=4000
-FRONTEND_URL=http://localhost:3000
-```
-
-**`frontend/.env.local`**
-```
-NEXT_PUBLIC_API_URL=http://localhost:4000
-```
-
-### 3. Run both dev servers
-
-```bash
-# Terminal 1 — backend (auto-restarts on save)
-cd backend && npm run dev
-
-# Terminal 2 — frontend
-cd frontend && npm run dev
-```
-
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:4000 |
-| Health check | http://localhost:4000/health |
-
-### 4. Build for production
-
-```bash
-# Backend
-cd backend && npm run build && npm start
-
-# Frontend
-cd frontend && npm run build && npm start
-```
-
----
-
-## Project Structure
-
-```
-WebsiteExtractor/
-├── backend/
-│   ├── src/
-│   │   ├── server.ts              # Express entry — CORS, rate-limit, /health
-│   │   ├── api/
-│   │   │   └── extract.ts         # POST /api/extract — validation + IP block
-│   │   ├── scraper/
-│   │   │   └── index.ts           # Playwright orchestration + anti-bot
-│   │   ├── extractor/
-│   │   │   ├── colors.ts          # 4-layer color extraction + frequency scoring
-│   │   │   ├── typography.ts      # 5-priority font detection
-│   │   │   ├── content.ts         # 4-layer content extraction
-│   │   │   ├── images.ts          # Image discovery + URL classification
-│   │   │   └── techstack.ts       # 5-layer tech stack detection
-│   │   └── zip/
-│   │       └── builder.ts         # ZIP streaming + 7 HTML preview generators
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── frontend/
-│   ├── app/
-│   │   ├── layout.tsx             # Root layout (Inter + Poppins fonts)
-│   │   ├── page.tsx               # Home page
-│   │   ├── globals.css            # Tailwind v4 + dark theme
-│   │   └── processing/
-│   │       ├── page.tsx           # Suspense wrapper
-│   │       └── ProcessingClient.tsx  # Progress UI + cold-start handling
-│   ├── components/
-│   │   ├── Navbar.tsx             # Top navigation bar
-│   │   ├── HeroSection.tsx        # Two-column hero layout
-│   │   ├── UrlInput.tsx           # URL input with client-side validation
-│   │   ├── Prism.tsx              # WebGL prism animation (OGL + GLSL)
-│   │   └── Prism.css
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── render.yaml                    # Render.com backend deployment config
-├── CLAUDE.md                      # Architecture guide for AI assistants
-└── README.md                      # This file
+# 4. Run both servers
+cd backend && npm run dev        # Terminal 1 — port 4000
+cd frontend && npm run dev       # Terminal 2 — port 3000
 ```
 
 ---
 
 ## API Reference
 
-### `GET /health`
+> Full endpoint documentation with request/response formats, error codes, and code examples: **[docs/api.md](docs/api.md)**
 
-Returns `{"status":"ok"}`. Used by the frontend to detect and wake a cold Render instance before making an extraction request.
-
----
-
-### `POST /api/extract`
-
-**Rate limit:** 10 requests per IP per 15 minutes.
-
-**Request**
-
-```json
-{ "url": "https://example.com" }
-```
-
-The `https://` prefix is added automatically if missing.
-
-**Success — 200**
-
-```
-Content-Type: application/zip
-Content-Disposition: attachment; filename="example.zip"
-```
-
-Binary ZIP stream.
-
-**Errors**
-
-| Status | Body | Cause |
+| Endpoint | Method | Purpose |
 |---|---|---|
-| `400` | `{"success":false,"error":"A valid URL is required"}` | Invalid or missing URL |
-| `400` | `{"success":false,"error":"URL not allowed"}` | Private/localhost IP blocked |
-| `500` | `{"success":false,"error":"…"}` | Scrape failure (see messages below) |
+| `/health` | GET | Check if backend is running |
+| `/api/extract` | POST | Extract assets from a URL, returns ZIP |
 
-**Error messages from the scraper**
-
-| Message | Cause |
-|---|---|
-| `"This site is protected by bot detection (…)"` | Page title matched Cloudflare / CAPTCHA patterns |
-| `"Access denied (HTTP 403)"` | Site returned 401 or 403 |
-| `"The site took too long to respond"` | 30-second `goto` timeout exceeded |
-| `"Domain not found"` | DNS resolution failed (`ERR_NAME_NOT_RESOLVED`) |
-| `"Connection refused"` | Site is down or blocking (`ERR_CONNECTION_REFUSED`) |
-| `"Too many requests. Try again in 15 minutes."` | Rate limit reached |
+Rate limit: **10 requests per IP per 15 minutes.**
 
 ---
 
 ## Extraction Modules
 
-### `colors.ts`
+> Detailed documentation of all 5 extractors with detection layers, scoring weights, and output formats: **[docs/extractors.md](docs/extractors.md)**
 
-Layers run in sequence, scores accumulated, results normalized to hex and ranked. Primary/Secondary/Accent come from chromatic (non-grey) colors; Background from the lightest neutral.
-
-### `typography.ts`
-
-5-priority chain: `@font-face` rules → computed styles → style-block `@font-face` → Google Fonts link → frequency rank. `<script>` content is never scanned (third-party scripts embed unrelated font declarations).
-
-### `content.ts`
-
-4-layer merge: OG meta → framework JSON (`__NEXT_DATA__`, Nuxt, JSON-LD) → live DOM → HTML regex. Browser DOM takes priority; layers are merged with case-insensitive deduplication.
-
-### `images.ts`
-
-Discovery: OG/meta tags + DOM `<img>`/`srcset`/CSS backgrounds/SVG `<image>`. Classification: 7 categories by URL path pattern. Up to 50 discovered; up to 30 included in ZIP.
-
-### `techstack.ts`
-
-5 layers: browser globals + React fiber inspection → JS bundle fetch (80 KB × 5 files) → inline script scan → CSS file fetch (60 KB × 4 files) → HTML regex + response headers.
+| Module | File | Method |
+|---|---|---|
+| Color Palette | `extractor/colors.ts` | 4-layer frequency scoring → primary/secondary/accent/background |
+| Typography | `extractor/typography.ts` | 5-priority chain → heading/body/button/caption fonts |
+| Content | `extractor/content.ts` | 4-layer merge → headings/paragraphs/buttons/links/nav |
+| Images | `extractor/images.ts` | Meta + DOM discovery → 7-category URL classification |
+| Tech Stack | `extractor/techstack.ts` | 5 layers: browser → JS bundles → CSS → headers |
 
 ---
 
@@ -533,28 +403,14 @@ Discovery: OG/meta tags + DOM `<img>`/`srcset`/CSS backgrounds/SVG `<image>`. Cl
 
 ## Deployment
 
-### Backend — Render.com
+> Step-by-step deployment guide for both Render and Vercel, including environment variables and cold-start handling: **[docs/deployment.md](docs/deployment.md)**
 
-Defined in `render.yaml`. Pushes to `main` trigger automatic redeploy.
+| Service | Platform | Trigger |
+|---|---|---|
+| Backend | Render.com (free tier) | Auto-deploy on push to `main` |
+| Frontend | Vercel | Auto-deploy on push to `main` |
 
-> The Render free tier spins down after 15 minutes of inactivity. Cold start takes 50–60 seconds. The frontend handles this by pinging `/health` and retrying before making the extraction request — users see an amber "Waking up" state instead of a confusing error.
-
-**Environment variables (Render dashboard)**
-
-| Variable | Value |
-|---|---|
-| `PORT` | `4000` (already in render.yaml) |
-| `FRONTEND_URL` | Your Vercel deployment URL |
-
-### Frontend — Vercel
-
-Connect the GitHub repo to Vercel. Set root directory to `frontend`.
-
-**Environment variables (Vercel dashboard)**
-
-| Variable | Value |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Your Render backend URL |
+> **Note:** Render free tier spins down after 15 min idle. Cold start takes 50–60 seconds. The frontend handles this automatically with the `/health` ping retry loop.
 
 ---
 
