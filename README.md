@@ -11,13 +11,10 @@ Paste any public URL and receive a structured ZIP file containing the site's col
 1. [What You Get](#what-you-get)
 2. [What I Implemented](#what-i-implemented)
 3. [How It Works](#how-it-works)
-4. [Local Development](docs/development.md)
-5. [API Reference](docs/api.md)
-6. [Extraction Modules](docs/extractors.md)
-7. [Tech Stack](#tech-stack)
-8. [Deployment](docs/deployment.md)
-9. [Errors & Solutions](#errors--solutions)
-10. [Known Limitations](#known-limitations)
+4. [Tech Stack](#tech-stack)
+5. [Errors & Solutions](#errors--solutions)
+6. [Known Limitations](#known-limitations)
+7. [Project Guide](docs/project-guide.md)
 
 ---
 
@@ -328,8 +325,6 @@ User submits URL
 
 ## Local Development
 
-> Full setup guide with commands, environment files, project structure, and common issues: **[docs/development.md](docs/development.md)**
-
 Quick start:
 
 ```bash
@@ -351,8 +346,6 @@ cd frontend && npm run dev       # Terminal 2 — port 3000
 
 ## API Reference
 
-> Full endpoint documentation with request/response formats, error codes, and code examples: **[docs/api.md](docs/api.md)**
-
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/health` | GET | Check if backend is running |
@@ -363,8 +356,6 @@ Rate limit: **10 requests per IP per 15 minutes.**
 ---
 
 ## Extraction Modules
-
-> Detailed documentation of all 5 extractors with detection layers, scoring weights, and output formats: **[docs/extractors.md](docs/extractors.md)**
 
 | Module | File | Method |
 |---|---|---|
@@ -402,8 +393,6 @@ Rate limit: **10 requests per IP per 15 minutes.**
 ---
 
 ## Deployment
-
-> Step-by-step deployment guide for both Render and Vercel, including environment variables and cold-start handling: **[docs/deployment.md](docs/deployment.md)**
 
 | Service | Platform | Trigger |
 |---|---|---|
@@ -586,6 +575,45 @@ Added three new detection layers on top of the existing `page.evaluate()`:
 This expanded tech stack output from 1–2 detections on average to 5–10+ on most modern sites.
 
 **Files changed:** `backend/src/extractor/techstack.ts`
+
+---
+
+## FAQ
+
+**Q: How long does an extraction take?**
+A: 15–30 seconds for most sites. Bot-protected sites may fail immediately.
+
+**Q: Why does it say "Waking up server"?**
+A: The backend runs on Render's free tier which shuts down after 15 minutes of inactivity. The first request after idle takes 50–60 seconds to restart.
+
+**Q: Why didn't my site's tech stack show React/Vue?**
+A: Production builds remove most global variables. The detector uses 5 layers to find them, but heavily obfuscated bundles may still be missed.
+
+**Q: Can I extract a site that requires login?**
+A: No. Pages behind authentication return 401/403 or redirect to a login form before content loads.
+
+**Q: Is there a rate limit?**
+A: Yes — 10 requests per IP per 15 minutes to prevent abuse of the free tier.
+
+**Q: Can I run this locally without Render/Vercel?**
+A: Yes — see [Project Guide](docs/project-guide.md) for full setup instructions.
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make your changes and test locally
+4. Open a pull request with a clear description of what changed and why
+
+Please read [project-guide.md](docs/project-guide.md) before contributing to understand the architecture.
+
+---
+
+## License
+
+MIT License — free to use, modify, and distribute.
 
 ---
 
